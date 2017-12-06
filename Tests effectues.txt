@@ -1,0 +1,13 @@
+duplicate    ousmane
+odd  		 ousmane
+frequent  	 ousmane
+diurnal  	 ousmane
+gap          Ousmane--Remi  
+records   ousmane
+streaks  ousmane
+climatological ous... (terminer après les autres tests) 
+spike  ousmane
+humidity  ousman
+cloud  ousmane
+variance  ousmane
+winds  
