@@ -750,7 +750,7 @@ namespace NETCDFUTILS
 
 				delete[] qc_flags;
 			}
-			catch (NcException& e )
+			catch (NcException )
 			{
 				
 				cout << "qc_flags attribute doesn't exist" << endl;
