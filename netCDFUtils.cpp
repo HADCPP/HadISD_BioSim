@@ -25,6 +25,7 @@
 using namespace PYTHON_FUNCTION;
 using namespace UTILS;
 using namespace boost;
+using namespace boost::gregorian;
 using namespace std;
 using namespace netCDF;
 using namespace netCDF::exceptions;
@@ -37,36 +38,35 @@ namespace NETCDFUTILS
 	{
 		string namefile = station.getId();
 
-
 		boost::gregorian::date  DATESTART = boost::gregorian::date_from_iso_string(DATE[0]);
 		boost::gregorian::date  DATEEND = boost::gregorian::date_from_iso_string(DATE[1]);
 		//duree entre DATASTART et DATAEND
-		boost::gregorian::date_duration DaysBetween = DATEEND - DATESTART;
-		cout << DaysBetween.days();
+		date end = DATEEND + years(1);
+		boost::gregorian::date_duration DaysBetween = end - DATESTART;
 		int HoursBetween = int(DaysBetween.days()) * 24;
-		cout << HoursBetween << endl;
 		vector<int> TimeStamps;
-		PYTHON_FUNCTION::linspace<int>(&TimeStamps, 0, HoursBetween - 1, HoursBetween);
+		PYTHON_FUNCTION::linspace<int>(TimeStamps, 0, HoursBetween - 1, HoursBetween);
 		vector<int> ValidYears;
-		PYTHON_FUNCTION::linspace<int>(&ValidYears, int(DATESTART.year()), int(DATEEND.year() - 1), int(DATEEND.year() - 1) - int(DATESTART.year()) + 1);
+		PYTHON_FUNCTION::linspace<int>(ValidYears, int(DATESTART.year()), int(DATEEND.year()), int(DATEEND.year()- DATESTART.year() + 1));
 		string dubiousfile = LOG_OUTFILE_LOCS + "dubious_data_files.txt";
 		boost::gregorian::date  dbg_sttime = boost::gregorian::day_clock::local_day();
 
 		//Création des tableaux où mettre les variables meteo
 
-		std::vector<double> temperatures;
+		std::vector<float> temperatures;
 		std::vector<int> temperature_flags;
-		std::vector<double> dewpoints;
+		std::vector<float> dewpoints;
 		std::vector<int>dewpoint_flags;
-		std::vector<double> windspeeds;
+		std::vector<float> windspeeds;
 		std::vector<int> windspeeds_flags;
-		std::vector<double> humidity;
+		std::vector<float> humidity;
 		std::vector<int> humiditys_flags;
-		std::vector<double> winddirs;
+		std::vector<float> winddirs;
 		std::vector<int> winddirs_flags;
-		std::vector<double>  pressure;
+		std::vector<float>  pressure;
 		std::vector<int> pressure_flags;
-
+		std::vector<float>  precip;
+		std::vector<int> precip_flags;
 
 		//Tells you what the true input station id was for the duplicate
 		//using list as string array.
@@ -75,19 +75,20 @@ namespace NETCDFUTILS
 			input_station_id.push_back("NULL");
 
 		//Initialisation des tableaux de variables meteo
-		fill<double>(&temperatures, HoursBetween);
-		fill<int>(&temperature_flags, HoursBetween);
-		fill<double>(&dewpoints, HoursBetween);
-		fill<int>(&dewpoint_flags, HoursBetween);
-		fill<double>(&windspeeds, HoursBetween);
-		fill<int>(&windspeeds_flags, HoursBetween);
-		fill<double>(&humidity, HoursBetween);
-		fill<int>(&humiditys_flags, HoursBetween);
-		fill<double>(&winddirs, HoursBetween);
-		fill<int>(&winddirs_flags, HoursBetween);
-		fill<double>(&pressure, HoursBetween);
-		fill<int>(&pressure_flags, HoursBetween);
-
+		fill<float>(temperatures, HoursBetween);
+		fill<int>(temperature_flags, HoursBetween);
+		fill<float>(dewpoints, HoursBetween);
+		fill<int>(dewpoint_flags, HoursBetween);
+		fill<float>(windspeeds, HoursBetween);
+		fill<int>(windspeeds_flags, HoursBetween);
+		fill<float>(humidity, HoursBetween);
+		fill<int>(humiditys_flags, HoursBetween);
+		fill<float>(winddirs, HoursBetween);
+		fill<int>(winddirs_flags, HoursBetween);
+		fill<float>(pressure, HoursBetween);
+		fill<int>(pressure_flags, HoursBetween);
+		fill<float>(precip, HoursBetween);
+		fill<int>(precip_flags, HoursBetween);
 
 		//if extra : Ajouter des variables meteo supplémentaires
 
@@ -119,12 +120,11 @@ namespace NETCDFUTILS
 			getline(input, ligne);
 			if (ligne == "") break;
 			int i = 0;
-			string data[10] = { "0" };
+			string data[15] = { "0" };
 			tokenizer<char_separator<char>> tokens(ligne, sep);
 			for (const string& t : tokens)
 			{
 				data[i] = t;
-				//cout << data[i] << endl;
 				i++;
 			}
 			year = data[0];
@@ -138,49 +138,56 @@ namespace NETCDFUTILS
 				dt_time = boost::gregorian::date_from_iso_string(year + month + day);
 				//throw boost::gregorian::bad_day_of_month();
 			}
-			catch (...)
+			catch (boost::gregorian::bad_day_of_month)
 			{
 				cout << "error with boost::gregorian";
 			}
 			//duree entre DATASTART et la date de l'observation
 			boost::gregorian::date_duration obs_date = dt_time - DATESTART;
-			//cout << dt_time << "\t";
+			
 			int  obs_time = obs_date.days() * 24 + hour;
-			cout << obs_time << "\t";
+
 			int time_loc = obs_time;
 			//test if this time_loc out of bounds:
 			if (time_loc != HoursBetween)
 			{
 				double currentT = temperatures[time_loc];
 				double currentD = dewpoints[time_loc];
+
 				double newT = atof(data[4].c_str());//temperature
 				double newD = atof(data[5].c_str());//dewpoint
+
 				bool Extract = false;
+
 				// no extract happened for this time stamp as yet - so extract
 				if (input_station_id[time_loc] == "null") // this is not an overwrite, so nothing extra needs doing
 					Extract = true;
+
 				//if currently have no T or D data
-				else if (currentT == FLTMDI && currentD == FLTMDI)
+				else if (currentT == INTMDI && currentD == INTMDI)
 				{
 					if (input_station_id[time_loc] == namefile)
 					{
-						if (newT != FLTMDI || newD != FLTMDI)
+						if (newT != INTMDI || newD != INTMDI)
 							Extract = true;
+
 						else if (last_obs_time != 0)
+						{
 							if (std::abs(TimeStamps[time_loc] - obs_time) < std::abs(TimeStamps[time_loc] - last_obs_time))
 								Extract = true;
+						}
 					}
 					else Extract = true;
 				}
 				//if already have T but _no_ D OR D but _no_ T, but new one has T and D, take this line
 				//   this is an overwrite - so also check that overwriting with the same station
-				else if (((currentT != FLTMDI && currentD == FLTMDI) || (currentT == FLTMDI && currentD != FLTMDI)) && (newT != FLTMDI && newD != FLTMDI))
+				else if (((currentT != INTMDI && currentD == INTMDI) || (currentT == INTMDI && currentD != INTMDI)) && (newT != INTMDI && newD != INTMDI))
 				{
 					if (input_station_id[time_loc] == namefile)
 						Extract = true;
 				}
 				//have D but no T, and new observation comes up with T, select if closer
-				else if ((currentT == FLTMDI && currentD != FLTMDI) && (newT != FLTMDI))
+				else if ((currentT == INTMDI && currentD != INTMDI) && (newT != INTMDI))
 				{
 					// if overwriting, only do so with observation closer to time stamp
 					if (input_station_id[time_loc] == namefile)// # tests if already read into this time stamp
@@ -191,8 +198,8 @@ namespace NETCDFUTILS
 					}
 				}
 				// if already have T and D, and new one also has T and D, but at closer time stamp, take this line
-				//				#    this is an overwrite - so also check that overwriting with the same station
-				else if ((currentT != FLTMDI && currentD != FLTMDI) && (newT != FLTMDI && newD != FLTMDI))
+				// this is an overwrite - so also check that overwriting with the same station
+				else if ((currentT != INTMDI && currentD != INTMDI) && (newT != INTMDI && newD != INTMDI))
 				{
 					if (input_station_id[time_loc] == namefile)
 					{
@@ -209,20 +216,21 @@ namespace NETCDFUTILS
 				//main variables
 				if (Extract)
 				{
-					temperatures[time_loc] = atof(data[4].c_str());
+					temperatures[time_loc] = atof(data[5].c_str());
 					temperature_flags[time_loc] = INTMDI;
-					dewpoints[time_loc] = atof(data[5].c_str());
+					dewpoints[time_loc] = atof(data[8].c_str());
 					dewpoint_flags[time_loc] = INTMDI;
-					humidity[time_loc] = atof(data[6].c_str());
+					humidity[time_loc] = atof(data[9].c_str());
 					humiditys_flags[time_loc] = INTMDI;
-					windspeeds[time_loc] = atof(data[7].c_str());
+					windspeeds[time_loc] = atof(data[10].c_str());
 					windspeeds_flags[time_loc] = INTMDI;
-					winddirs[time_loc] = atof(data[7].c_str());
+					winddirs[time_loc] = atof(data[11].c_str());
 					winddirs_flags[time_loc] = INTMDI;
-					pressure[time_loc] = atof(data[9].c_str());
+					pressure[time_loc] = atof(data[13].c_str());
 					pressure_flags[time_loc] = INTMDI;
-
-					// Optional variables
+					precip[time_loc] = atof(data[7].c_str());
+					precip_flags[time_loc] = INTMDI;
+					// Optional variables  ??
 				}
 			}
 		}
@@ -238,15 +246,15 @@ namespace NETCDFUTILS
 		NcDim long_char_len = ncFile.addDim("long_character_length", 12);
 		NcDim coords_len = ncFile.addDim("coordinate_length", 1);
 		//Ecrire les coordonnées
-		double t_latitude[1];
-		double t_longitude[1];
-		double t_elevation[1];
+		float t_latitude[1];
+		float t_longitude[1];
+		float t_elevation[1];
 		t_latitude[0] = station.getLat();
 		t_longitude[0] = station.getLon();
 		t_elevation[0] = station.getElev();
-		write_coordinates<double>(&ncFile, "latitude", coords_len, "latitude", "station_latitude", "degrees_north", "Y", t_latitude);
-		write_coordinates<double>(&ncFile, "longitude", coords_len, "longitude", "station_longitude", "degrees_east", "X", t_longitude);
-		write_coordinates<double>(&ncFile, "elevation", coords_len, "surface_altitude", "vertical distance above the surface", "meters", "Z", t_elevation);
+		write_coordinates<float>(ncFile, "latitude", coords_len, "latitude", "station_latitude", "degrees_north", "Y", t_latitude);
+		write_coordinates<float>(ncFile, "longitude", coords_len, "longitude", "station_longitude", "degrees_east", "X", t_longitude);
+		write_coordinates<float>(ncFile, "elevation", coords_len, "surface_altitude", "vertical distance above the surface", "meters", "Z", t_elevation);
 
 		//station ID as base variable
 		NcVar nc_var = ncFile.addVar("station id", ncChar, long_char_len);
@@ -279,6 +287,8 @@ namespace NETCDFUTILS
 		prvar.setCompression(false, true, 9);
 		NcVar  prfvar = ncFile.addVar("pressure_flags", ncShort, time);
 		prfvar.setCompression(false, true, 9);
+		NcVar  precipvar = ncFile.addVar("precip", ncShort, time);
+		precipvar.setCompression(false, true, 9);
 		timesvar.putAtt("long_name", "time_of_measurement");
 		timesvar.putAtt("standard_name", "time");
 		timesvar.putAtt("units", "hours since "+DATE[0]);
@@ -335,11 +345,11 @@ namespace NETCDFUTILS
 
 		cout << " Writing data to netcdf file" << endl;
 
-		double * t_temperatures = new double[HoursBetween];
-		double *t_dewpoints = new double[HoursBetween];
-		double *t_windspeeds = new double[HoursBetween];
-		double *t_pressure = new double[HoursBetween];
-		double *t_winddirs = new double[HoursBetween];
+		float * t_temperatures = new float[HoursBetween];
+		float *t_dewpoints = new float[HoursBetween];
+		float *t_windspeeds = new float[HoursBetween];
+		float *t_pressure = new float[HoursBetween];
+		float *t_winddirs = new float[HoursBetween];
 		int  *t_TimeStamps = new int[HoursBetween];
 		int *t_temperature_flags = new int[HoursBetween];
 		int *t_dewpoint_flags = new int[HoursBetween];
@@ -349,15 +359,15 @@ namespace NETCDFUTILS
 
 
 		CreateTab<int>(TimeStamps, t_TimeStamps);
-		CreateTab<double>(temperatures, t_temperatures);
+		CreateTab<float>(temperatures, t_temperatures);
 		CreateTab<int>(temperature_flags, t_temperature_flags);
-		CreateTab<double>(dewpoints, t_dewpoints);
+		CreateTab<float>(dewpoints, t_dewpoints);
 		CreateTab<int>(dewpoint_flags, t_dewpoint_flags);
-		CreateTab<double>(windspeeds, t_windspeeds);
+		CreateTab<float>(windspeeds, t_windspeeds);
 		CreateTab<int>(windspeeds_flags, t_windspeeds_flags);
-		CreateTab<double>(winddirs, t_winddirs);
+		CreateTab<float>(winddirs, t_winddirs);
 		CreateTab<int>(winddirs_flags, t_winddirs_flags);
-		CreateTab<double>(pressure, t_pressure);
+		CreateTab<float>(pressure, t_pressure);
 		CreateTab<int>(pressure_flags, t_pressure_flags);
 
 
@@ -642,17 +652,17 @@ namespace NETCDFUTILS
 			cout << "no reporting information - cannot set up dimensions" << endl;
 		}
 		//write station coordinates
-		double t_latitude[1] = { station.getLat() };
+		float t_latitude[1] = { station.getLat() };
 
-		double t_longitude[1] = { station.getLon() };
+		float t_longitude[1] = { station.getLon() };
 
-		double t_elevation[1] = { station.getElev() };
+		float t_elevation[1] = { station.getElev() };
 
-		write_coordinates<double>(&outfile, "longitude", coords_len, "longitude", "station_longitude", "degrees_east", "X", t_longitude);
+		write_coordinates<float>(outfile, "longitude", coords_len, "longitude", "station_longitude", "degrees_east", "X", t_longitude);
 
-		write_coordinates<double>(&outfile, "latitude", coords_len, "latitude", "station_latitude", "degrees_north", "Y", t_latitude);
+		write_coordinates<float>(outfile, "latitude", coords_len, "latitude", "station_latitude", "degrees_north", "Y", t_latitude);
 
-		write_coordinates<double>(&outfile, "elevation", coords_len, "surface_altitude", "vertical distance above the surface", "meters", "Z", t_elevation);
+		write_coordinates<float>(outfile, "elevation", coords_len, "surface_altitude", "vertical distance above the surface", "meters", "Z", t_elevation);
 
 		//station ID as base variable
 		NcVar nc_var = outfile.addVar("station id", ncChar, long_char_dim);

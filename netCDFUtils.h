@@ -23,9 +23,9 @@
 
 namespace
 {
-	std::string LOG_OUTFILE_LOCS = "D:\\HadISD++\\Data\\Log\\";
-	std::string NETCDF_DATA_LOCS = "D:\\HadISD++\\Data\\NetCDF_files\\";
-	std::string CSV_OUTFILE_LOCS = "D:\\HadISD++\\Data\\PEI 2015-2016H\\";
+	std::string LOG_OUTFILE_LOCS = "D:\\HadISD_BioSim\\Data\\Log\\";
+	std::string NETCDF_DATA_LOCS = "D:\\HadISD_BioSim\\Data\\NetCDF_files\\";
+	std::string CSV_OUTFILE_LOCS = "D:\\HadISD_BioSim\\Data\\Csv_files\\";
 	const int INTMDI = -999;
 	const float FLTMDI = -1e30;
 	const int NBVAR=69; // recuperer la taille des données dans le fichier netCDF
@@ -45,9 +45,9 @@ namespace NETCDFUTILS
 	: param flt data : coordinate
 	*/
 	template<typename T>
-	inline void  write_coordinates(netCDF::NcFile *ncFile, const std::string short_name, netCDF::NcDim dim, const std::string  standard_name, const std::string  long_name, const  std::string  units, const std::string  axis, double * data)
+	inline void  write_coordinates(netCDF::NcFile& ncFile, const std::string short_name, netCDF::NcDim dim, const std::string  standard_name, const std::string  long_name, const  std::string  units, const std::string  axis, T * data)
 	{
-		NcVar nc_var = (*ncFile).addVar(short_name, ncFloat, dim);
+		NcVar nc_var = ncFile.addVar(short_name, ncFloat, dim);
 		nc_var.setCompression(false, true, 9);
 		nc_var.putAtt("Standard_name", standard_name);
 		nc_var.putAtt("long_name", long_name);
@@ -89,9 +89,10 @@ namespace NETCDFUTILS
 			nc_var.putAtt("standard_name", standard_name);
 
 	}
-	
+	// Initialiser les tableaux où mettres les données des variables météo
+	//Fonction prévue pour affecter deux valeurs différentes selon les valeurs de la variable météo
 	template<typename T>
-	void fill(std::vector<T> *tab, int tab_size)
+	void fill(std::vector<T>& tab, int tab_size)
 	{
 		if (typeid(T).name() == typeid(int).name())
 		{
@@ -101,7 +102,7 @@ namespace NETCDFUTILS
 		else
 		{
 			for(int i = 0; i < tab_size; i++)
-				(*tab).push_back(FLTMDI);
+				(*tab).push_back(INTMDI);
 		}
 
 	}

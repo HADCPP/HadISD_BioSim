@@ -26,17 +26,17 @@ using namespace INTERNAL_CHECKS;
 
 
 
- string DATES[2]={ "20060101", "20100101"};
+ string DATES[2]={ "20160101", "20170101"};
 
 //string LOG_OUTFILE_LOCS = "P: \\Project\\wbsTools\\HadISD\\Weather\\Data\\";
 //string CSV_OUTFILE_LOCS = "P: \\Project\\wbsTools\\HadISD\\Weather\\PEI 2015-2016H\\";
 
 
 
-void read_file(string file, vector<CStation> &station_info)
+void read_file(const string file, vector<CStation>& station_info)
 {
 	/*    
-		Fonction pour lire le contenu du fichier candidate_stations.txt et affecter ses éléments aux attributs
+		Fonction pour lire le contenu du fichier Quebec 2016-2017.HourlyHdr.csv et affecter ses éléments aux attributs
 		de la classe CStation
 	*/
 	
@@ -60,23 +60,23 @@ void read_file(string file, vector<CStation> &station_info)
 		{
 			getline(input, ligne);
 			int i = 0;
-			string data[12] = { "0" };
+			string data[22] = { "0" };
 			tokenizer<char_separator<char>> tokens(ligne, sep);
-			for (const string& t : tokens)
+			for (tokenizer<char_separator<char>>::const_iterator t = tokens.begin(); t != tokens.end();t++)
 			{
-				data[i] = t.c_str();
-				//cout << data[i] << endl;
+
+				(t->c_str() != "") ? data[i] = t->c_str() : data[i] = "";
 				i++;
 			}
 			
 			CStation station = CStation::CStation(data[0], data[1], atof(data[2].c_str()), atof(data[3].c_str()), 
-							atof(data[4].c_str()), data[7].c_str());
+							atof(data[4].c_str()), data[12].c_str());
 						station_info.push_back(station);
 		}
 		/*for (size_t i = 0, len = station_info.size(); i < len; i++)
-			cout <<station_info.at(i).toString()<<endl;*/
+			cout <<station_info.at(i).toString()<<endl;
 		
-		/*char  delimiter = ';';
+		char  delimiter = ';';
 		while (!input.eof())
 		{
 			getline(input, ligne);
@@ -97,7 +97,7 @@ void read_file(string file, vector<CStation> &station_info)
 		
 }
 
-void ncdf(vector<CStation> station_info)
+void ncdf(const vector<CStation>& station_info)
 {
 		
 	for (CStation stat : station_info)
@@ -106,14 +106,17 @@ void ncdf(vector<CStation> station_info)
 		string nom_file = (stat).getName() + " [" + (stat).getId() + "]";
 		string fichier = CSV_OUTFILE_LOCS + nom_file + ".csv";
 		boost::filesystem::path p{ fichier };
-		boost::filesystem::exists(p);
-		cout << p.filename() << endl;
-		cout << "\n Making NetCDF files from CSV files \n" << endl; 
-		cout << "Reading data from  " << p.parent_path() << endl;
-		cout <<"Writing data to   "<<NETCDF_DATA_LOCS << endl;
-		std::size_t pos = nom_file.find(' ');
-		//nom_file = nom_file.substr(0,pos);
-		MakeNetcdfFiles(fichier, DATES, stat); // Creer les fichiers netcdf
+		if (boost::filesystem::exists(p))
+		{
+			cout << p.filename() << endl;
+			cout << "\n Making NetCDF files from CSV files \n" << endl;
+			cout << "Reading data from  " << p.parent_path() << endl;
+			cout << "Writing data to   " << NETCDF_DATA_LOCS << endl;
+			std::size_t pos = nom_file.find(' ');
+			//nom_file = nom_file.substr(0,pos);
+			MakeNetcdfFiles(fichier, DATES, stat); // Creer les fichiers netcdf
+		} 
+		else exit(1);
 	}
 	cout << "NetCDF files created" << endl;
 }
@@ -123,20 +126,18 @@ void ncdf(vector<CStation> station_info)
 int main(int arg, char * argv)
 {
 
-
-	//faire un changement
-	//fichier d'entrée
+	//Lire les Ids et informations concernant les stations dans le fichier 
+	//
 	
-	//char* file = "C:\\Users\\oali\\Documents\\Visual Studio 2013\\Projects\\duplicate_months\\duplicate_months\\candidate_stations.txt";
-	string file = "D:\\HadISD++\\Data\\PEI2015-2016.HourlyHdr.csv";
+	string file = "D:\\HadISD_BioSim\\Data\\Meteo_data\\Quebec 2016-2017.HourlyHdr.csv";
 			
 	vector<CStation> station_info;
-	//Obtenir la liste des stations
+	//Obtenir la liste des stations et mettre les infos dans des objets CStation
 	read_file(file,station_info);
 	/*for (size_t i = 0, len = station_info.size(); i < len; i++)
 		cout <<station_info.at(i).toString()<<endl;*/
 	//Creer des fichiers netcdf à partir de chaque csv file.
-	//ncdf(station_info);
+	ncdf(station_info);
 	bool second = false;
 	test mytest;
 	internal_checks(station_info, mytest, second, DATES);

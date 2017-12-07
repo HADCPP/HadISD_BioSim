@@ -324,17 +324,16 @@ public:
 
 namespace PYTHON_FUNCTION
 {
-	/*Return evenly spaced numbers over a specified interval.
-	//
-	//Returns `num` evenly spaced samples, calculated over the
-	//interval[`start`, `stop`].*/
+	
+	//Returns num evenly spaced samples, calculated over the
+	//interval[start, stop].*/
 	template<typename T>
-	inline void linspace(std::vector<T> *t, int start, int stop, int number)
+	inline void linspace(std::vector<T>& t, int start, int stop, int number)
 	{
 
 		int delta = int((stop - start) / (number - 1));
 		for (int i = 0; i < number; i++)
-			(*t).push_back(start + i*delta);
+			t.push_back(start + i*delta);
 	}
 	
 	inline void arange(std::vector<int>& t, int stop, int start = 0)
