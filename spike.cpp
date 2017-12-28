@@ -217,7 +217,7 @@ namespace INTERNAL_CHECKS
 			{
 				float median_diff;
 				int j;
-				(t < 1) j = time_diffs.size() - 1 : j = t - 1;
+				(t < 1) ? j = time_diffs.size() - 1 : j = t - 1;
 
 				if (std::abs(time_diffs[j]) > 240 && std::abs(time_diffs[t]) < 3)
 				{

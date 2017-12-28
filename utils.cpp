@@ -375,41 +375,19 @@ namespace UTILS
 	/* create bins and bin centres from data 
 		given bin width covers entire range */
 	
-	void create_bins(varrayfloat& indata, float binwidth, varrayfloat& bins, varrayfloat& bincenters)
+	void create_bins(const varrayfloat& indata, float binwidth, varrayfloat& bins, varrayfloat& bincenters)
 	{
 		//set up the bins
 		int bmins = int(floor(indata.min()));
+		float max = indata.max();
 		int bmax = int(ceil(indata.max()));
 		bins = PYTHON_FUNCTION::arange<float>(bmax + (3. * binwidth), bmins - binwidth, binwidth);
 		bincenters.resize(bins.size());
 		for (int i = 0; i < bins.size() - 1; i++)
 				bincenters[i] = 0.5*(bins[i] + bins[i+1]);
-
 	}
-	/* create bins and bin centres from data given bin width covers entire range */
 
-	void create_bins(std::valarray<CMaskedArray<float>>& indata, float binwidth, varrayfloat& bins, varrayfloat& bincenters)
-	{
-		
-		//Search min and min of the matrice
-		varrayfloat Min(indata.size());
-		varrayfloat Max(indata.size());
-
-		for (size_t i = 0; i < indata.size(); i++)
-		{
-			Min[i] = indata[i].compressed().min();
-			Max[i] = indata[i].compressed().max();
-		}
-
-		int bmins = int(floor(Min.min()));
-		int bmax = int(ceil(Max.max()));
-		//set up the bins
-		bins = PYTHON_FUNCTION::arange<float>(bmax + (3. * binwidth), bmins - binwidth, binwidth);
-		bincenters.resize(bins.size()-1);
-		for (int i = 0; i < bins.size() - 1; i++)
-			bincenters[i] = 0.5*(bins[i] + bins[i + 1]);
-
-	}
+	
 	//Sum up a single month across all years(e.g.all Januaries)
 	//return this_month, year_ids, datacount
 
@@ -420,7 +398,6 @@ namespace UTILS
 		valarray<int> datacount(month_ranges.size());
 		for (size_t y = 0; y < month_ranges.size();y++)
 		{
-
 			
 			CMaskedArray<float> this_year = data(month_ranges[y].first, month_ranges[y].second);
 			this_year.masked(data.m_fill_value);

@@ -26,7 +26,7 @@ using namespace INTERNAL_CHECKS;
 
 
 
- string DATES[2]={ "20160101", "20170101"};
+ string DATES[2]={ "20020101", "20150101"};
 
 //string LOG_OUTFILE_LOCS = "P: \\Project\\wbsTools\\HadISD\\Weather\\Data\\";
 //string CSV_OUTFILE_LOCS = "P: \\Project\\wbsTools\\HadISD\\Weather\\PEI 2015-2016H\\";
@@ -49,14 +49,14 @@ void read_file(const string file, vector<CStation>& station_info)
 		{ 
 			input.open(chaine.c_str());
 		}
-		catch (std::exception e)
+		catch (std::exception& e)
 		{
 			cout << e.what() << endl;
 		}
 		if (!input) exit(1);
 		string ligne="";
 		getline(input, ligne);
-		while (!input.eof())
+		/*while (!input.eof())
 		{
 			getline(input, ligne);
 			int i = 0;
@@ -72,41 +72,76 @@ void read_file(const string file, vector<CStation>& station_info)
 			CStation station = CStation::CStation(data[0], data[1], atof(data[2].c_str()), atof(data[3].c_str()), 
 							atof(data[4].c_str()), data[12].c_str());
 						station_info.push_back(station);
-		}
-		/*for (size_t i = 0, len = station_info.size(); i < len; i++)
-			cout <<station_info.at(i).toString()<<endl;
+		}*/
 		
-		char  delimiter = ';';
+		
+		char  delimiter = ',';
 		while (!input.eof())
 		{
 			getline(input, ligne);
-			cout << ligne << endl;
 			istringstream iss(ligne);
 			string token;
 			int i = 0;
-			string data[12] = { "0" };
+			string data[22] = { "0" };
 
 			while (getline(iss, token, delimiter))
 			{
 				data[i] = token.c_str();
 				i++;
 			}
-			CStation stat = CStation::CStation(data[0], atof(data[2].c_str()), atof(data[3].c_str()), atof(data[4].c_str()));
-			station_info.push_back(stat);*/
-		
-		
+			CStation stat = CStation(data[0], data[1], atof(data[2].c_str()), atof(data[3].c_str()), atof(data[4].c_str()), data[12].c_str());
+			station_info.push_back(stat);
+
+		}
 }
 
-void ncdf(const vector<CStation>& station_info)
+void ncdf(const vector<CStation>& station_info,test& internal_tests,bool second)
 {
 		
-	for (CStation stat : station_info)
+	for (CStation station : station_info)
 	{
 		
-		string nom_file = (stat).getName() + " [" + (stat).getId() + "]";
+		string nom_file = (station).getName() + " [" + (station).getId() + "]";
+		
 		string fichier = CSV_OUTFILE_LOCS + nom_file + ".csv";
 		boost::filesystem::path p{ fichier };
-		if (boost::filesystem::exists(p))
+		if (!boost::filesystem::exists(p))
+		{
+			string nom = (station).getName();
+			auto pos = std::string::npos;
+			while ((pos = nom.find('é')) != std::string::npos || (pos = nom.find('è')) != std::string::npos || (pos = nom.find('ê')) != std::string::npos)
+			{
+					nom.replace(pos, 1, "e");
+			}
+			while ((pos = nom.find('à')) != std::string::npos)
+			{
+					nom.replace(pos, 1, "a");
+			}
+			while ((pos = nom.find('\'')) != std::string::npos)
+			{
+					nom.replace(pos, 1 , " ");
+			}
+
+			nom_file = nom + " [" + (station).getId() + "]";
+			fichier = CSV_OUTFILE_LOCS + nom_file + ".csv";
+			boost::filesystem::path p1{ fichier };
+			if (boost::filesystem::exists(p1))
+			{
+				cout << p1.filename() << endl;
+				cout << "\n Making NetCDF files from CSV files \n" << endl;
+				cout << "Reading data from  " << p.parent_path() << endl;
+				cout << "Writing data to   " << NETCDF_DATA_LOCS << endl;
+				std::size_t pos = nom_file.find(' ');
+				//nom_file = nom_file.substr(0,pos);
+				if (!NETCDFUTILS::MakeNetcdfFiles(fichier, DATES, station, internal_tests)) // Creer le fichier netcdf
+				{
+					//Exécuter les tests
+					INTERNAL_CHECKS::internal_checks(station, internal_tests, second, DATES);
+				}
+			}
+			else continue;
+		}
+		else
 		{
 			cout << p.filename() << endl;
 			cout << "\n Making NetCDF files from CSV files \n" << endl;
@@ -114,9 +149,13 @@ void ncdf(const vector<CStation>& station_info)
 			cout << "Writing data to   " << NETCDF_DATA_LOCS << endl;
 			std::size_t pos = nom_file.find(' ');
 			//nom_file = nom_file.substr(0,pos);
-			MakeNetcdfFiles(fichier, DATES, stat); // Creer les fichiers netcdf
+			if (!NETCDFUTILS::MakeNetcdfFiles(fichier, DATES, station, internal_tests)) // Creer le fichier netcdf
+			{
+				//Exécuter les tests
+				INTERNAL_CHECKS::internal_checks(station, internal_tests, second, DATES);
+			}
 		} 
-		else exit(1);
+		
 	}
 	cout << "NetCDF files created" << endl;
 }
@@ -129,18 +168,31 @@ int main(int arg, char * argv)
 	//Lire les Ids et informations concernant les stations dans le fichier 
 	//
 	
-	string file = "D:\\HadISD_BioSim\\Data\\Meteo_data\\Quebec 2016-2017.HourlyHdr.csv";
-			
+	string file = "D:\\HadISD_BioSim\\Data\\Meteo_data\\East-Canada\\Quebec 2002-2015.HourlyHdr.csv";
+	
 	vector<CStation> station_info;
 	//Obtenir la liste des stations et mettre les infos dans des objets CStation
 	read_file(file,station_info);
-	/*for (size_t i = 0, len = station_info.size(); i < len; i++)
-		cout <<station_info.at(i).toString()<<endl;*/
-	//Creer des fichiers netcdf à partir de chaque csv file.
-	ncdf(station_info);
 	bool second = false;
-	test mytest;
-	internal_checks(station_info, mytest, second, DATES);
+	test internal_tests;
+	internal_tests.climatological = true;
+	internal_tests.diurnal = true;
+	internal_tests.cloud = false;
+	internal_tests.duplicate = true;
+	internal_tests.frequent = false;
+	internal_tests.gap = true;
+	internal_tests.humidity = true;
+	internal_tests.odd = true;
+	internal_tests.records = true;
+	internal_tests.spike = true;
+	internal_tests.streaks = true;
+	internal_tests.variance = true;
+	internal_tests.winds = true;
+	if (!second)
+	{//Creer des fichiers netcdf à partir de chaque csv file.
+		ncdf(station_info,internal_tests,second);
+	}
+	
 	std::system("PAUSE");
 	return 0;
 	

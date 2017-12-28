@@ -116,7 +116,7 @@ namespace INTERNAL_CHECKS
 			varraysize too_high = npwhere<float>(all_filtered.m_data, ">", maxes[variable][st_region]);
 			krc_set_flags(too_high, station, flag_col[v]);
 			//make sure that don't flag the missing values!
-			varraysize too_low = npwhere(all_filtered, '<', mins[variable][st_region]);
+			varraysize too_low = npwhere(all_filtered, "<", mins[variable][st_region]);
 			krc_set_flags(too_low, station, flag_col[v]);
 			varraysize flag_locs = npwhere<float>(station.getQc_flags()[flag_col[v]], "!", float(0));
 			UTILS::print_flagged_obs_number(logfile, "World Record", variable, flag_locs.size());

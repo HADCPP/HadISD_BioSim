@@ -143,23 +143,23 @@ namespace INTERNAL_CHECKS
 		{
 			CMetVar& st_var = station.getMetvar(variable);
 			CMaskedArray<float> all_filtered = apply_filter_flags(st_var);
-
+			float mdi = Cast<float>(st_var.getMdi());
 			vector<pair<int, int>> month_ranges = month_starts_in_pairs(start, end);
-			// array de taille 12*43*2 où chaque ligne correspond à un mois
+			// array de taille 12*Nombre_années*2 où chaque ligne correspond à un mois
 			std::vector<std::valarray<pair<int, int>>> month_ranges_years = L_reshape3(month_ranges, 12);		
 
-			for (int month = 0; month < 12; ++month)
+			for (int month = 0; month < 12; month++)
 			{
-				varrayfloat  hourly_climatologies(Cast<float>(st_var.getMdi()), 24);
+				varrayfloat  hourly_climatologies(mdi, 24);
 				//append all e.g.Januaries together
 
 				vector<int> year_ids;
 				varrayInt datacount(month_ranges.size());
 				vector<CMaskedArray<float>> this_month;
 				vector<CMaskedArray<float>> this_month_filtered;
-				datacount = concatenate_months(month_ranges_years[month], st_var.getAllData(), this_month_filtered, year_ids, Cast<float>(st_var.getMdi()), true);
+				datacount = concatenate_months(month_ranges_years[month], st_var.getAllData(), this_month_filtered, year_ids, mdi, true);
 				year_ids.clear();
-				datacount = concatenate_months(month_ranges_years[month], all_filtered, this_month, year_ids, Cast<float>(st_var.getMdi()), true);
+				datacount = concatenate_months(month_ranges_years[month], all_filtered, this_month, year_ids, mdi, true);
 
 
 				//if fixed climatology period, sort this here
@@ -194,26 +194,35 @@ namespace INTERNAL_CHECKS
 						}
 					}
 				}
-				//Verifier si this_month contient des valeurs non masquées
-				valarray<bool> v_mask(this_month.size());
-				for (size_t i = 0; i < this_month.size(); ++i)
-					v_mask[i] = this_month[i].m_mask.max();
-				if (v_mask.max()) //equivalent de len(this_month.compressed()) > 0
+				if (CompressedMatrice(this_month).size()>0)
 				{
 					//can get stations with few obs in a particular variable.
 
 					//anomalise each hour over month appropriately
-					valarray<CMaskedArray<float>> anomalies(this_month.size()), anomalies_filtered(this_month_filtered.size());
+					valarray<CMaskedArray<float>> anomalies(this_month.size());
+					valarray<CMaskedArray<float>>anomalies_filtered(this_month_filtered.size());
 
 					for (size_t i = 0; i < this_month.size(); ++i)
 					{
 						anomalies[i] = this_month[i];
-						anomalies[i].m_data -= hourly_climatologies;
-						//anomalies[i].masked(this_month[i].m_fill_value);
 
 						anomalies_filtered[i] = this_month_filtered[i];
-						anomalies_filtered[i].m_data -= hourly_climatologies;
 
+						for (int j = 0; j < hourly_climatologies.size(); j++)
+						{
+							if (anomalies[i].m_data[j] != anomalies[i].m_fill_value 
+								&& hourly_climatologies[j] != anomalies[i].m_fill_value)
+							{
+								anomalies[i].m_data[j] -= hourly_climatologies[j];
+							}
+							if (anomalies_filtered[i].m_data[j] != anomalies_filtered[i].m_fill_value 
+								&& hourly_climatologies[j] != anomalies_filtered[i].m_fill_value)
+							{
+								anomalies_filtered[i].m_data[j] -= hourly_climatologies[j];
+							}
+
+						}
+						
 					}
 
 					varrayfloat Compress = CompressedMatrice(anomalies);
@@ -224,7 +233,7 @@ namespace INTERNAL_CHECKS
 						if (iqr < 1.5)  iqr = 1.5;
 					}
 					else
-						iqr = Cast<float>(st_var.getMdi());
+						iqr = mdi;
 
 					valarray<CMaskedArray<float>> normed_anomalies = anomalies;
 					valarray<CMaskedArray<float>> normed_anomalies_filtered = anomalies_filtered;
@@ -250,16 +259,22 @@ namespace INTERNAL_CHECKS
 							monthly_vqvs.m_data[year] = idl_median(Compress);
 						}
 						else
+						{
 							monthly_vqvs.m_mask[year] = true;
+							monthly_vqvs.m_masked_indices.push_back(year);
+						}
 
 					}
+					
 					//low pass filter
 					coc_low_pass_filter(normed_anomalies, year_ids, monthly_vqvs, int(month_ranges_years[0].size()));
 					varrayfloat bins, bincenters;
-					UTILS::create_bins(normed_anomalies, 1, bins, bincenters);
+					Compress = CompressedMatrice(normed_anomalies);
+					float max = Compress.max();
+					UTILS::create_bins(Compress, 1, bins, bincenters);
 
 					varrayfloat binEdges(bins);
-					Compress = CompressedMatrice(normed_anomalies);
+					
 					double mu = Compress.sum() / Compress.size();
 					WBSF::CStatistic stat;
 					for (size_t i = 0; i < Compress.size(); i++)

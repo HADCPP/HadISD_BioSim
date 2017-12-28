@@ -1,24 +1,5 @@
 #include "netCDFUtils.h"
-#include <string>
-#include <iostream>
-#include <sstream>
-#include <fstream>
-#include <boost/date_time/gregorian/gregorian.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/tokenizer.hpp>
-#include <boost/filesystem.hpp>
-#include <boost/format.hpp>
-#include <ctime>
-#include <iterator>
-#include "netcdf.h"
-#include "ncFile.h"
-#include "ncDim.h"
-#include "ncVar.h"
-#include <vector>
-#include "station.h"
-#include <zlib.h>
-#include <cstring>
-#include <boost/filesystem.hpp>
+
 
 
 
@@ -34,7 +15,7 @@ using namespace netCDF::exceptions;
 namespace NETCDFUTILS
 {
 
-	void MakeNetcdfFiles(const string fichier, string *DATE, CStation& station)
+	bool MakeNetcdfFiles(const string fichier, string *DATE, CStation& station, test& internal_tests)
 	{
 		string namefile = station.getId();
 
@@ -51,44 +32,27 @@ namespace NETCDFUTILS
 		string dubiousfile = LOG_OUTFILE_LOCS + "dubious_data_files.txt";
 		boost::gregorian::date  dbg_sttime = boost::gregorian::day_clock::local_day();
 
-		//Création des tableaux où mettre les variables meteo
+		//Création et initialisation des tableaux où mettre les variables meteo
 
-		std::vector<float> temperatures;
-		std::vector<int> temperature_flags;
-		std::vector<float> dewpoints;
-		std::vector<int>dewpoint_flags;
-		std::vector<float> windspeeds;
-		std::vector<int> windspeeds_flags;
-		std::vector<float> humidity;
-		std::vector<int> humiditys_flags;
-		std::vector<float> winddirs;
-		std::vector<int> winddirs_flags;
-		std::vector<float>  pressure;
-		std::vector<int> pressure_flags;
-		std::vector<float>  precip;
-		std::vector<int> precip_flags;
+		std::valarray<float> temperatures(INTMDI,HoursBetween);
+		std::valarray<int> temperature_flags(INTMDI, HoursBetween);
+		std::valarray<float> dewpoints(INTMDI, HoursBetween);
+		std::valarray<int> dewpoint_flags(INTMDI, HoursBetween);
+		std::valarray<float> windspeeds(INTMDI, HoursBetween);
+		std::valarray<int> windspeeds_flags(INTMDI, HoursBetween);
+		std::valarray<float> humidity(INTMDI, HoursBetween);
+		std::valarray<int> humiditys_flags(INTMDI, HoursBetween);
+		std::valarray<float> winddirs(INTMDI, HoursBetween);
+		std::valarray<int> winddirs_flags(INTMDI, HoursBetween);
+		std::valarray<float>  slp(INTMDI, HoursBetween);
+		std::valarray<int> slp_flags(INTMDI, HoursBetween);
+		std::valarray<float> precip(INTMDI, HoursBetween);
+		std::valarray<int> precip_flags(INTMDI, HoursBetween);
 
 		//Tells you what the true input station id was for the duplicate
 		//using list as string array.
-		vector<string> input_station_id;
-		for (int i = 0; i < HoursBetween; i++)
-			input_station_id.push_back("NULL");
+		std::valarray<string> input_station_id("NULL", HoursBetween);
 
-		//Initialisation des tableaux de variables meteo
-		fill<float>(temperatures, HoursBetween);
-		fill<int>(temperature_flags, HoursBetween);
-		fill<float>(dewpoints, HoursBetween);
-		fill<int>(dewpoint_flags, HoursBetween);
-		fill<float>(windspeeds, HoursBetween);
-		fill<int>(windspeeds_flags, HoursBetween);
-		fill<float>(humidity, HoursBetween);
-		fill<int>(humiditys_flags, HoursBetween);
-		fill<float>(winddirs, HoursBetween);
-		fill<int>(winddirs_flags, HoursBetween);
-		fill<float>(pressure, HoursBetween);
-		fill<int>(pressure_flags, HoursBetween);
-		fill<float>(precip, HoursBetween);
-		fill<int>(precip_flags, HoursBetween);
 
 		//if extra : Ajouter des variables meteo supplémentaires
 
@@ -99,7 +63,7 @@ namespace NETCDFUTILS
 		stringstream sst;
 		sst << fichier;
 		string chaine = sst.str();
-		char_separator<char> sep(",");
+		
 		boost::filesystem::exists(chaine.c_str());
 		try
 		{
@@ -107,46 +71,167 @@ namespace NETCDFUTILS
 		}
 		catch (std::exception e)
 		{
-			cout << e.what() << endl;
+			std::cout << e.what() << endl;
 		}
 		if (!input)exit(-1);
 		string ligne = "";
+		string token;
+		char  delimiter = ',';
+		map<string,int> Headings;
+		// Lecture de l'entête du fichier et récupération des entêtes des principales variables (si elles existent)
+		// Indices des variables;
+		int temp, dew,hum, windS, windD, pres,precipitation;
 		getline(input, ligne);
+		char_separator<char> sep(",");
+		tokenizer<char_separator<char>> tokens(ligne, sep);
+		int i = 0;
+		for (tokenizer<char_separator<char>>::const_iterator t = tokens.begin(); t != tokens.end(); t++)
+		{
+			Headings[t->c_str()] = i++;
+		}
+		/*istringstream iss(ligne);
+		
+		while (getline(iss, token, delimiter))
+		{
+			Headings[token.c_str()] =i++ ;
+		}*/
+		bool sortie = false;
+		if (!Headings["Tair"])
+		{
+			std::cout << " Les données ne contiennent pas la temperature \n !!" << endl;
+			return true;
+		}
+		else
+		{
+			temp = Headings["Tair"];
+
+			if (Headings["Tdew"])  dew = Headings["Tdew"];
+			if (Headings["Pres"])  pres = Headings["Pres"];
+			if (Headings["WndS"])  windS = Headings["WndS"];
+			if (Headings["WndD"])  windD = Headings["WndD"];
+			if (Headings["Prcp"])  precipitation = Headings["Prcp"];
+			if (Headings["RelH"])  hum = Headings["RelH"];
+
+			if (Headings["Tdew"])
+			{
+	
+				//internal_tests.climatological = true;
+				if (Headings["Prcp"])
+				{
+					
+					//internal_tests.humidity = true;
+				}
+				else
+				{
+					internal_tests.humidity = false;
+				}
+				
+				if (Headings["Pres"])
+				{
+					
+					/*internal_tests.frequent = true;
+					internal_tests.gap = true;*/
+					if (Headings["WndS"])
+					{
+						
+						/*internal_tests.odd = true;
+						internal_tests.records = true;
+						internal_tests.spike = true;
+						internal_tests.variance = true;*/
+						if (Headings["WndD"])
+						{
+							
+							/*internal_tests.streaks = true;
+							internal_tests.winds = true;*/
+						}
+						else
+						{
+							internal_tests.streaks = false;
+							internal_tests.winds = false;
+						}
+					}
+					else
+					{
+						internal_tests.odd = false;
+						internal_tests.records = false;
+						internal_tests.spike = false;
+						internal_tests.variance = false;
+						internal_tests.streaks = false;
+						internal_tests.winds = false;
+					}
+				}
+				else
+				{
+					internal_tests.frequent = false;
+					internal_tests.gap = false;
+					internal_tests.odd = false;
+					internal_tests.records = false;
+					internal_tests.spike = false;
+					internal_tests.variance = false;
+					internal_tests.streaks = false;
+					internal_tests.winds = false;
+				}
+			}
+			else
+			{
+				internal_tests.climatological = false;
+				internal_tests.humidity = false;
+				internal_tests.frequent = false;
+				internal_tests.gap = false;
+				internal_tests.odd = false;
+				internal_tests.records = false;
+				internal_tests.spike = false;
+				internal_tests.variance = false;
+				internal_tests.streaks = false;
+				internal_tests.winds = false;
+
+			}
+			
+			if (Headings["RelH"])  hum = Headings["RelH"];
+			
+		}
+		
 		while (!input.eof())
 		{
-
+			getline(input, ligne);
+			istringstream iss(ligne);
 			string year, month, day;
 			int hour;
-			getline(input, ligne);
 			if (ligne == "") break;
-			int i = 0;
-			string data[15] = { "0" };
-			tokenizer<char_separator<char>> tokens(ligne, sep);
-			for (const string& t : tokens)
+
+			vector<string> data;
+
+			while (getline(iss, token, delimiter))
 			{
-				data[i] = t;
-				i++;
+				data.push_back(token.c_str());
+
 			}
 			year = data[0];
+
+			// tester si la date de l'observation appartient à l'intervalle d'années désiré
+			int annee = std::stoi(year);
+		
+			if (!(std::find(ValidYears.begin(), ValidYears.end(), annee) != ValidYears.end())) continue;
+			
+
 			month = (data[1].size() == 1) ? "0" + data[1] : data[1];
 			day = (data[2].size() == 1) ? "0" + data[2] : data[2];
 			hour = atoi(data[3].c_str());
 			boost::gregorian::date  dt_time;
-			cout << year << month << day << data[3] << "	";
 			try
 			{
 				dt_time = boost::gregorian::date_from_iso_string(year + month + day);
-				//throw boost::gregorian::bad_day_of_month();
+				
 			}
-			catch (boost::gregorian::bad_day_of_month)
+			catch(boost::gregorian::bad_day_of_month)
 			{
-				cout << "error with boost::gregorian";
+				std::cout << "error with boost::gregorian";
 			}
 			//duree entre DATASTART et la date de l'observation
 			boost::gregorian::date_duration obs_date = dt_time - DATESTART;
 			
 			int  obs_time = obs_date.days() * 24 + hour;
-
+			
 			int time_loc = obs_time;
 			//test if this time_loc out of bounds:
 			if (time_loc != HoursBetween)
@@ -154,8 +239,8 @@ namespace NETCDFUTILS
 				double currentT = temperatures[time_loc];
 				double currentD = dewpoints[time_loc];
 
-				double newT = atof(data[4].c_str());//temperature
-				double newD = atof(data[5].c_str());//dewpoint
+				double newT = atof(data[temp].c_str());//temperature
+				double newD = atof(data[dew].c_str());//dewpoint
 
 				bool Extract = false;
 
@@ -216,19 +301,19 @@ namespace NETCDFUTILS
 				//main variables
 				if (Extract)
 				{
-					temperatures[time_loc] = atof(data[5].c_str());
+					temperatures[time_loc] = atof(data[temp].c_str());
 					temperature_flags[time_loc] = INTMDI;
-					dewpoints[time_loc] = atof(data[8].c_str());
+					(Headings["Tdew"]) ? dewpoints[time_loc] = atof(data[dew].c_str()) : dewpoints[time_loc] = -999;
 					dewpoint_flags[time_loc] = INTMDI;
-					humidity[time_loc] = atof(data[9].c_str());
+					(Headings["RelH"]) ? humidity[time_loc] = atof(data[hum].c_str()) : humidity[time_loc] = -999;
 					humiditys_flags[time_loc] = INTMDI;
-					windspeeds[time_loc] = atof(data[10].c_str());
+					(Headings["WndS"]) ? windspeeds[time_loc] = atof(data[windS].c_str()) : windspeeds[time_loc] = -999;
 					windspeeds_flags[time_loc] = INTMDI;
-					winddirs[time_loc] = atof(data[11].c_str());
+					(Headings["WndD"]) ? winddirs[time_loc] = atof(data[windD].c_str()) : winddirs[time_loc] = -999;
 					winddirs_flags[time_loc] = INTMDI;
-					pressure[time_loc] = atof(data[13].c_str());
-					pressure_flags[time_loc] = INTMDI;
-					precip[time_loc] = atof(data[7].c_str());
+					(Headings["Pres"]) ? slp[time_loc] = atof(data[pres].c_str()) : slp[time_loc] = -999;
+					slp_flags[time_loc] = INTMDI;
+					(Headings["Prcp"]) ? precip[time_loc] = atof(data[precipitation].c_str()) : precip[time_loc] = -999;
 					precip_flags[time_loc] = INTMDI;
 					// Optional variables  ??
 				}
@@ -261,7 +346,7 @@ namespace NETCDFUTILS
 		nc_var.putAtt("Standard_name", "station_identification_code");
 		nc_var.putAtt("long_name", "Station ID number");
 		char strtoarray_ID[10];
-		strcpy(strtoarray_ID, station.getId().c_str());
+		std::strcpy(strtoarray_ID, station.getId().c_str());
 		nc_var.putVar(strtoarray_ID);
 		// create variables
 		NcVar timesvar = ncFile.addVar("time", ncDouble, time);
@@ -283,9 +368,9 @@ namespace NETCDFUTILS
 		NcVar wdvar = ncFile.addVar("winddirs", ncDouble, time);
 		NcVar  wdfvar = ncFile.addVar("winddirs_flags", ncShort, time);
 		wdvar.setCompression(false, true, 9);
-		NcVar  prvar = ncFile.addVar("pressure", ncDouble, time);
+		NcVar  prvar = ncFile.addVar("slp", ncDouble, time);
 		prvar.setCompression(false, true, 9);
-		NcVar  prfvar = ncFile.addVar("pressure_flags", ncShort, time);
+		NcVar  prfvar = ncFile.addVar("slp_flags", ncShort, time);
 		prfvar.setCompression(false, true, 9);
 		NcVar  precipvar = ncFile.addVar("precip", ncShort, time);
 		precipvar.setCompression(false, true, 9);
@@ -303,31 +388,41 @@ namespace NETCDFUTILS
 		stationsvar.putAtt("missing_value", "null");
 
 		// temperature  min et max
-
-		auto max_temp = std::max_element(std::begin(temperatures), std::end(temperatures));
-		auto min_temp = std::min_element(std::begin(temperatures), std::end(temperatures));
+		varrayfloat dummy = temperatures[temperatures != float(INTMDI)];
+		float max_temp = dummy.max();
+		float min_temp = dummy.min();
 
 		// tester le contenu de max et min _temp
 		///NcVar nc_var, const string long_name, const string cell_method, T missing_value, const  string  units, const string  axis, double vmin, double vmax, const string coordinates, const string standard_name = "")
-		write_attributes<double>(tempsvar, "Dry bulb air temperature at screen height (~2m)", "latitude: longitude: time: point (nearest to reporting hour)", FLTMDI, "degree_Celsius", "T", *max_temp, *min_temp, "latitude longitude elevation", "surface_temperature");
+		write_attributes<double>(tempsvar, "Dry bulb air temperature at screen height (~2m)", "latitude: longitude: time: point (nearest to reporting hour)", INTMDI, "degree_Celsius", "T", min_temp, max_temp, "latitude longitude elevation", "surface_temperature");
 		WriteFlagAttributes<int>(tempsflagsvar, "flags for temperature", INTMDI, "T");
 
-		auto max_dew = std::max_element(std::begin(dewpoints), std::end(dewpoints));
-		auto min_dew = std::min_element(std::begin(dewpoints), std::end(dewpoints));
-		write_attributes<double>(dewsvar, "Dew point temperature at screen height (~2m)", "latitude: longitude: time: point (nearest to reporting hour)", FLTMDI, "degree_Celsius", "T", *max_dew, *min_dew, "latitude longitude elevation", "dew_point_temperature");
+		dummy = dewpoints[dewpoints != float(INTMDI)];
+		float max_dew;
+		(Headings["Tdew"]) ? max_dew= dummy.max() : max_dew= -999;
+		float min_dew;
+		(Headings["Tdew"]) ? min_dew = dummy.min() : min_dew = -999; 
+		write_attributes<double>(dewsvar, "Dew point temperature at screen height (~2m)", "latitude: longitude: time: point (nearest to reporting hour)", INTMDI, "degree_Celsius", "T", min_dew, max_dew, "latitude longitude elevation", "dew_point_temperature");
 		WriteFlagAttributes<int>(dewsflagsvar, "flags for dewpoint temperature", INTMDI, "T");
 
-		auto max_ws = std::max_element(std::begin(windspeeds), std::end(windspeeds));
-		auto min_ws = std::min_element(std::begin(windspeeds), std::end(windspeeds));
-		write_attributes<double>(wsvar, "Wind speed at mast height (~10m)", "latitude: longitude: time: point (nearest to reporting hour)", FLTMDI, "meters per second", "T", *max_ws, *min_ws, "latitude longitude elevation", "wind_speed");
+		dummy = windspeeds[windspeeds != float(INTMDI)];
+		float max_ws;
+		float min_ws;
+		(Headings["WndS"]) ? max_ws = dummy.max() : max_ws = -999;
+		(Headings["WndS"]) ? min_ws = dummy.min() : min_ws = -999;
+		write_attributes<double>(wsvar, "Wind speed at mast height (~10m)", "latitude: longitude: time: point (nearest to reporting hour)", INTMDI, "meters per second", "T", min_ws, max_ws, "latitude longitude elevation", "wind_speed");
 		WriteFlagAttributes<int>(wsfvar, "flags for windspeed", INTMDI, "T");
 
-		write_attributes<double>(wdvar, "Wind Direction at mast height (~10m)", "latitude: longitude: time: point (nearest to reporting hour)", FLTMDI, "degree", "T", 360, 0, "latitude longitude elevation", "wind_from_direction");
+		write_attributes<double>(wdvar, "Wind Direction at mast height (~10m)", "latitude: longitude: time: point (nearest to reporting hour)", INTMDI, "degree", "T", 0, 360, "latitude longitude elevation", "wind_from_direction");
 		WriteFlagAttributes<int>(wdfvar, "flags for wind direction", INTMDI, "T");
 
-		auto max_prs = std::max_element(std::begin(pressure), std::end(pressure));
-		auto min_prs = std::min_element(std::begin(pressure), std::end(pressure));
-		write_attributes<double>(prvar, "Reported Sea Level Pressure at screen height (~2m)", "latitude: longitude: time: point (nearest to reporting hour)", FLTMDI, "mbar", "T", 360, 0, "latitude longitude elevation", "air_pressure_at_sea_level");
+		dummy = slp[slp != float(INTMDI)];
+		float smax ;
+		float smin;
+	
+		(Headings["pres"]) ? smax = dummy.max() : smax = -999;
+		(Headings["pres"]) ? smin = dummy.min() : smin = -999;
+		write_attributes<double>(prvar, "Reported Sea Level Pressure at screen height (~2m)", "latitude: longitude: time: point (nearest to reporting hour)", INTMDI, "hPa", "T", smin, smax, "latitude longitude elevation", "air_pressure_at_sea_level");
 		WriteFlagAttributes<int>(prfvar, "flags for pressure", INTMDI, "T");
 
 		//global attributes
@@ -343,19 +438,19 @@ namespace NETCDFUTILS
 		ncFile.putAtt("date_created", fmter.str());
 		ncFile.putAtt("history", "Created by ...");
 
-		cout << " Writing data to netcdf file" << endl;
+		std::cout << " Writing data to netcdf file" << endl;
 
 		float * t_temperatures = new float[HoursBetween];
 		float *t_dewpoints = new float[HoursBetween];
 		float *t_windspeeds = new float[HoursBetween];
-		float *t_pressure = new float[HoursBetween];
+		float *t_slp = new float[HoursBetween];
 		float *t_winddirs = new float[HoursBetween];
 		int  *t_TimeStamps = new int[HoursBetween];
 		int *t_temperature_flags = new int[HoursBetween];
 		int *t_dewpoint_flags = new int[HoursBetween];
 		int *t_windspeeds_flags = new int[HoursBetween];
 		int *t_winddirs_flags = new int[HoursBetween];
-		int *t_pressure_flags = new int[HoursBetween];
+		int *t_slp_flags = new int[HoursBetween];
 
 
 		CreateTab<int>(TimeStamps, t_TimeStamps);
@@ -367,21 +462,21 @@ namespace NETCDFUTILS
 		CreateTab<int>(windspeeds_flags, t_windspeeds_flags);
 		CreateTab<float>(winddirs, t_winddirs);
 		CreateTab<int>(winddirs_flags, t_winddirs_flags);
-		CreateTab<float>(pressure, t_pressure);
-		CreateTab<int>(pressure_flags, t_pressure_flags);
+		CreateTab<float>(slp, t_slp);
+		CreateTab<int>(slp_flags, t_slp_flags);
 
 
 		timesvar.putVar(t_TimeStamps);
 		tempsvar.putVar(t_temperatures);
 		tempsflagsvar.putVar(t_temperature_flags);
-		dewsflagsvar.putVar(t_dewpoints);
+		dewsvar.putVar(t_dewpoints);
 		dewsflagsvar.putVar(t_dewpoint_flags);
 		wsvar.putVar(t_windspeeds);
 		wsfvar.putVar(t_windspeeds_flags);
 		wdvar.putVar(t_winddirs);
 		wdfvar.putVar(t_winddirs_flags);
-		prvar.putVar(t_pressure);
-		prfvar.putVar(t_pressure_flags);
+		prvar.putVar(t_slp);
+		prfvar.putVar(t_slp_flags);
 		
 		//Free memory
 		delete[] t_TimeStamps;
@@ -393,19 +488,20 @@ namespace NETCDFUTILS
 		delete[] t_windspeeds_flags;
 		delete[] t_winddirs;
 		delete[] t_winddirs_flags;
-		delete[] t_pressure;
-		delete[] t_pressure_flags;
+		delete[] t_slp;
+		delete[] t_slp_flags;
 		//if extra ....
 
 		//zip file
-		cout << ncFile.getName() << endl;
-		cout << "Done station " << station.getName() << endl;
-		cout << boost::gregorian::day_clock::local_day() - dbg_sttime << endl;
-		cout << boost::gregorian::day_clock::local_day() << endl;
+		std::cout << ncFile.getName() << endl;
+		std::cout << "Done station " << station.getName() << endl;
+		std::cout << boost::gregorian::day_clock::local_day() - dbg_sttime <<" s"<< endl;
+		std::cout << boost::gregorian::day_clock::local_day() << endl;
 
+		return sortie;
 	}
 	/*
-	//	Reads the netcdf file
+	//	Read the netcdf file
 	//and appends attributes to station object variables to be read passed
 	// in as list
 	*/
@@ -430,12 +526,12 @@ namespace NETCDFUTILS
 			}
 			else full_var_list.push_back("time");
 
-			for (string variable : full_var_list)
+			for(string variable : full_var_list)
 			{
 				NcVar var = ncFile.getVar(variable); //Extraire la variable netcdf associée à la variable de process_vars;
 				/*map<string, NcVarAtt> atts = var.getAtts();
 				for (map<string, NcVarAtt>::iterator it = atts.begin(); it !=atts.end(); it++)
-				cout << (*it).first << endl;*/
+				std::cout << (*it).first << endl;*/
 				string att = getAttribute<string>(var, "long_name");
 				//Instanciation  objet CMetVar avec le nom de la variable netcdf
 				CMetVar this_var = CMetVar(variable, att);
@@ -460,17 +556,18 @@ namespace NETCDFUTILS
 				}
 				//Attribut missing value (mdi)
 				
-				try{ this_var.setMdi( to_string(getAttribute<float>(var,"missing_value")) ); }
+				try{ this_var.setMdi(getAttribute<string>(var,"missing_value")); }
 				catch (NcException &e)
 				{
-					cerr << 2 << "	" << variable << e.what() << endl;
-					if (variable == "temperatures")				this_var.setMdi("-1e30");
+					cerr << 2 << "	" << variable <<"   "<< e.what() << endl;
+					if (variable == "temperatures")				this_var.setMdi("-999");
 					else if (variable == "input_station_id")	this_var.setMdi("null");
-					else if (variable == "total_cloud_cover")	this_var.setMdi("-999");
+					//else if (variable == "total_cloud_cover")	this_var.setMdi("-999");
 				}
 				// Data 
 				if (variable != "input_station_id")
 				{
+					int n = ncFile.getDim("time").getSize();
 					float *data = new float[ncFile.getDim("time").getSize()];
 					var.getVar(data);
 					CMaskedArray<float> vdata(ncFile.getDim("time").getSize(), data,Cast<float>(this_var.getMdi()));
@@ -478,11 +575,11 @@ namespace NETCDFUTILS
 					delete[] data;
 				}
 				//Attribut valid_max
-				try{ this_var.setValidMax(to_string(getAttribute<float>(var,"valid_max"))); }
+				try{ this_var.setValidMax(getAttribute<string>(var,"valid_max")); }
 				catch (NcException &e){ cerr << 3 << "	" << variable << e.what() << endl; }
 				//Attribut valid_min
 				try{
-					this_var.setValidMin(to_string(getAttribute<float>(var,"valid_min")));
+					this_var.setValidMin(getAttribute<string>(var,"valid_min"));
 				}
 				catch (NcException& e){ cerr << 4 << "	" << variable << e.what() << endl; }
 				//Attribut standard_name
@@ -526,7 +623,7 @@ namespace NETCDFUTILS
 									
 					NcVar qc_flags = ncFile.getVar("quality_control_flags");
 					if(qc_flags.isNull())
-						cout << "no QC flags available" << endl;
+						std::cout << "no QC flags available" << endl;
 					else
 					{
 						size_t ligne = station.getMetvar("time").getData().size();
@@ -549,7 +646,7 @@ namespace NETCDFUTILS
 				//Check if variable flagged_value exist in the netCDF file
 				if (ncFile.getVar("flagged_value").isNull())
 				{
-					cout << "no flagged obs available in netcdf file " << endl;
+					std::cout << "no flagged obs available in netcdf file " << endl;
 					// if doesn't exist, make an empty array 
 					
 					int v = 0;
@@ -573,7 +670,7 @@ namespace NETCDFUTILS
 			//read in reporting statistics - just to carry through
 
 			if (ncFile.getVar("reporting_stats").isNull())
-				cout << "no reporting stats available in netcdf file" << endl;
+				std::cout << "no reporting stats available in netcdf file" << endl;
 			else
 			{
 
@@ -649,7 +746,7 @@ namespace NETCDFUTILS
 		}
 		catch (NcException )
 		{
-			cout << "no reporting information - cannot set up dimensions" << endl;
+			std::cout << "no reporting information - cannot set up dimensions" << endl;
 		}
 		//write station coordinates
 		float t_latitude[1] = { station.getLat() };
@@ -669,7 +766,7 @@ namespace NETCDFUTILS
 				
 		nc_var.putAtt("long_name", "Station ID number");
 		char strtoarray_ID[10];
-		strcpy(strtoarray_ID, station.getId().c_str());
+		std::strcpy(strtoarray_ID, station.getId().c_str());
 		nc_var.setCompression(false, true, 9);
 		nc_var.putVar(strtoarray_ID);
 		
@@ -763,7 +860,7 @@ namespace NETCDFUTILS
 			catch (NcException )
 			{
 				
-				cout << "qc_flags attribute doesn't exist" << endl;
+				std::cout << "qc_flags attribute doesn't exist" << endl;
 
 			}
 		}
@@ -852,9 +949,10 @@ namespace NETCDFUTILS
 		
 			catch (NcException )
 			{
-				cout << "no flagged observations." << endl;
+				std::cout << "no flagged observations." << endl;
 			}
 		}
+		/*
 		//combine all reporting accuracies together to output as single array in netcdf file - if available
 		//try
 		//{
@@ -881,9 +979,9 @@ namespace NETCDFUTILS
 		//}
 		//catch (NcException )
 		//{
-		//	cout << "no reporting accuracy information" << endl;
+		//	std::cout << "no reporting accuracy information" << endl;
 		//}
-		
+		*/
 		// Global Attributes
 		
 		//from code

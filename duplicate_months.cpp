@@ -86,7 +86,7 @@ namespace INTERNAL_CHECKS
 
 	*/
 	void dmc(CStation& station, std::vector<std::string>& variable_list, std::vector<std::string>& full_variable_list,
-		int flag_col, boost::gregorian::date start, boost::gregorian::date end, ofstream &logfile)
+		int flag_col, boost::gregorian::date start, boost::gregorian::date end, ofstream& logfile)
 	{
 		const  int MIN_DATA_REQUIRED = 20;
 		//get array of MAP<INT,INT> start / end pairs

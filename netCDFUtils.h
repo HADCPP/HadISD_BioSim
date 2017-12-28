@@ -4,6 +4,14 @@
 #include "Utilities.h"
 #include "station.h"
 #include "utils.h"
+#include "Internal_checks.h"
+
+#include <boost/date_time/gregorian/gregorian.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/tokenizer.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/format.hpp>
+#include <boost/spirit/include/classic.hpp>
 
 #include "netcdf.h"
 #include "ncFile.h"
@@ -12,12 +20,18 @@
 #include "ncException.h"
 #include "ncVarAtt.h"
 
+#include <string>
+#include <iostream>
+#include <sstream>
+#include <fstream>
 #include <vector>
 #include <map>
 #include <string>
 #include <typeinfo.h>
 #include <valarray>
-
+#include <ctime>
+#include <iterator>
+#include <algorithm>
 
 
 
@@ -25,7 +39,7 @@ namespace
 {
 	std::string LOG_OUTFILE_LOCS = "D:\\HadISD_BioSim\\Data\\Log\\";
 	std::string NETCDF_DATA_LOCS = "D:\\HadISD_BioSim\\Data\\NetCDF_files\\";
-	std::string CSV_OUTFILE_LOCS = "D:\\HadISD_BioSim\\Data\\Csv_files\\";
+	std::string CSV_OUTFILE_LOCS = "D:\\HadISD_BioSim\\Data\\Meteo_data\\East-Canada\\Quebec 2002-2015H\\";
 	const int INTMDI = -999;
 	const float FLTMDI = -1e30;
 	const int NBVAR=69; // recuperer la taille des données dans le fichier netCDF
@@ -97,12 +111,12 @@ namespace NETCDFUTILS
 		if (typeid(T).name() == typeid(int).name())
 		{
 			for (int i = 0; i < tab_size; i++)
-				(*tab).push_back(INTMDI);
+				tab.push_back(INTMDI);
 		}
 		else
 		{
 			for(int i = 0; i < tab_size; i++)
-				(*tab).push_back(INTMDI);
+				tab.push_back(INTMDI);
 		}
 
 	}
@@ -118,12 +132,21 @@ namespace NETCDFUTILS
 	}
 	
 	template<typename T>
-	inline void CreateTab(std::vector<T>& v_tab, T *tab)
+	inline void CreateTab(std::valarray<T>& v_tab, T *tab)
 	{
 		
 		for (int i = 0; i < v_tab.size(); i++)
 		{
 			*(tab+i) =  v_tab[i];
+		}
+	}
+	template<typename T>
+	inline void CreateTab(std::vector<T>& v_tab, T *tab)
+	{
+
+		for (int i = 0; i < v_tab.size(); i++)
+		{
+			*(tab + i) = v_tab[i];
 		}
 	}
 	template<typename T>
@@ -162,7 +185,7 @@ namespace NETCDFUTILS
 			return *att;
 
 	}
-	void MakeNetcdfFiles(const std::string fichier, std::string *date, CStation &stat);
+	bool MakeNetcdfFiles(const std::string fichier, std::string *date, CStation& stat, test& internal_tests);
 	void read(std::string filename, CStation& stat, std::vector<std::string>& process_var, std::vector<std::string>&  opt_var_list ,
 		bool read_input_station_id = true, bool read_qc_flags = true, bool read_flagged_obs = true);
 	void write(const std::string filename1, CStation & stat, std::vector<std::string> var_list,

@@ -129,7 +129,7 @@ namespace INTERNAL_CHECKS
 		// get overall monthly climatologies - use filtered data
 
 		std::vector<std::valarray<float>> list_month_average = C_reshape(month_average.m_data, 12);
-		std::vector<std::valarray<float>>  list_month_average_filtered = L_reshape(month_average_filtered.m_data, 12);
+		std::vector<std::valarray<float>>  list_month_average_filtered = C_reshape(month_average_filtered.m_data, 12);
 
 		/***Initialisation de standardised_months*/
 
@@ -146,7 +146,7 @@ namespace INTERNAL_CHECKS
 
 			if (valid_filtered.size() >= VALID_MONTHS)
 			{
-				WBSF::CStatistic valid_data;
+				WBSF::CStatisticEx valid_data;
 				
 				
 				for (size_t i = 0; i < valid_filtered.size(); i++)
@@ -164,9 +164,6 @@ namespace INTERNAL_CHECKS
 				else
 				{
 					clim = valid_data[WBSF::MEDIAN];
-
-					if (spread <= float(SPREAD_LIMIT))
-						spread = float(SPREAD_LIMIT);
 
 					spread = valid_data[WBSF::INTER_Q];
 

@@ -80,9 +80,10 @@ namespace INTERNAL_CHECKS
 		size_t maxloc = np_argmax(natural_hist);
 		return float(natural_hist[maxloc] / normed_hist[maxloc]);
 	}
-
+	/* Effectuer le test sur au moins deux ans*/
 	void wind_rose_check(CStation &station, int flag_col, boost::gregorian::date start, boost::gregorian::date  end,std::ofstream& logfile)
 	{
+
 		CMaskedArray<float> speed = station.getMetvar("windspeeds").getAllData();
 		CMaskedArray<float> direction = station.getMetvar("winddirs").getAllData();
 		varrayfloat flags = station.getQc_flags()[flag_col];

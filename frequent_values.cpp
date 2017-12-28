@@ -39,7 +39,7 @@ namespace INTERNAL_CHECKS
 		int v = 0;
 		for (string variable : variable_list)
 		{
-			CMetVar & st_var = station.getMetvar(variable);
+			CMetVar& st_var = station.getMetvar(variable);
 			CMaskedArray<float> filtered_data = apply_filter_flags(st_var);
 			float  reporting_accuracy = UTILS::reporting_accuracy(filtered_data);
 
@@ -67,7 +67,7 @@ namespace INTERNAL_CHECKS
 					
 					for (const vector<pair<int, int>> year : month_ranges_years)
 					{
-								//churn through months extracting data, accounting for fdi and concatenating together
+						//churn through months extracting data, accounting for fdi and concatenating together
 
 						/****** Indices où extraire les données selon les saisons *****/
 						
@@ -194,8 +194,10 @@ namespace INTERNAL_CHECKS
 					
 					CMaskedArray<float> year_data;
 					varrayfloat year_flags;
+					int i = 0;
 					for(const vector<pair<int, int>> year : month_ranges_years)
 					{
+						i++;
 						/***************** Indices où extraire les données selon les saisons **************/
 						// Saison 0
 						varraysize indices0(year[11].second - year[0].first);
@@ -346,9 +348,8 @@ namespace INTERNAL_CHECKS
 							station.setQc_flags(year_flags, indices3, flag_col[v]);
 						else if (season == 4)
 						{
-							
 							station.setQc_flags(year_flags[indices40], indices40, flag_col[v]);
-							station.setQc_flags(year_flags[std::slice(indices40.size(),indices41.size(),1)], indices41, flag_col[v]);
+							station.setQc_flags(year_flags[std::slice(indices40.size()-1,indices41.size(),1)], indices41, flag_col[v]);
 						}
 					}
 					

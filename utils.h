@@ -77,7 +77,7 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 	*/
 	inline float reporting_frequency(CMaskedArray<float>& good_indata);
 
-	void create_bins(varrayfloat& indata, float binwidth, varrayfloat &bins, varrayfloat  &bincenters);
+	void create_bins(const varrayfloat& indata, float binwidth, varrayfloat &bins, varrayfloat  &bincenters);
 	void create_bins(std::valarray<CMaskedArray<float>>& indata, float binwidth, varrayfloat& bins, varrayfloat& bincenters);
 	template<typename T>
 	inline T idl_median(std::valarray<T> indata)
