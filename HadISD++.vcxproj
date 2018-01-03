@@ -178,9 +178,16 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="Internal_checks.cpp" />
+    <ClCompile Include="Internal_checks.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="netCDFUtils.cpp" />
+    <ClCompile Include="neighbour_checks.cpp" />
+    <ClCompile Include="netCDFUtils.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="odd_cluster.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
@@ -224,16 +231,26 @@
     <ClInclude Include="frequent_values.h" />
     <ClInclude Include="humidity.h" />
     <ClInclude Include="Internal_checks.h" />
+    <ClInclude Include="neighbour_checks.h" />
     <ClInclude Include="odd_cluster.h" />
-    <ClInclude Include="python_function.h" />
+    <ClInclude Include="python_function.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="records.h" />
     <ClInclude Include="spike.h" />
     <ClInclude Include="station.h" />
     <ClInclude Include="Statistic.h" />
     <ClInclude Include="stdafx.h" />
-    <ClInclude Include="netCDFUtils.h" />
+    <ClInclude Include="netCDFUtils.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="streaks.h" />
-    <ClInclude Include="Utilities.h" />
+    <ClInclude Include="Utilities.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="utils.h" />
     <ClInclude Include="variance.h" />
     <ClInclude Include="winds.h" />
