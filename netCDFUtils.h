@@ -37,13 +37,13 @@
 
 namespace
 {
-	std::string LOG_OUTFILE_LOCS = "D:\\HadISD_BioSim\\Data\\Log\\";
-	std::string NETCDF_DATA_LOCS = "D:\\HadISD_BioSim\\Data\\NetCDF_files\\";
-	std::string CSV_OUTFILE_LOCS = "D:\\HadISD_BioSim\\Data\\Meteo_data\\East-Canada\\Quebec 2002-2015H\\";
-	const int INTMDI = -999;
-	const float FLTMDI = -1e30;
-	const int NBVAR=69; // recuperer la taille des données dans le fichier netCDF
-	
+	//std::string LOG_OUTFILE_LOCS = "D:\\HadISD_BioSim\\Data\\Log\\";
+	//std::string NETCDF_DATA_LOCS = "D:\\HadISD_BioSim\\Data\\NetCDF_files\\";
+	//std::string CSV_OUTFILE_LOCS = "D:\\HadISD_BioSim\\Data\\Meteo_data\\East-Canada\\Quebec 2002-2015H\\";
+	//const int INTMDI = -999;
+	//const float FLTMDI = -1e30;
+	//const int NBVAR=69; // recuperer la taille des données dans le fichier netCDF
+	//
 }
 namespace NETCDFUTILS
 {

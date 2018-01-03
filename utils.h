@@ -4,25 +4,30 @@
 #include "python_function.h"
 #include "Utilities.h"
 
-#include<vector>
+
+#include <vector>
 #include <algorithm>
-#include <boost/date_time/gregorian/gregorian.hpp>
 #include <valarray>
-#include <dlib\optimization.h>
+#include <boost/date_time/gregorian/gregorian.hpp>
+#include <boost/math/constants/constants.hpp>
+#include <dlib/optimization.h>
+
 
 typedef dlib::matrix<double, 1, 1> input_vector;
 typedef dlib::matrix<double, 2, 1> parameter_vector;
 typedef dlib::matrix<double, 3, 1> parameter_vector1;
 typedef dlib::matrix<double, 5, 1> parameter_vector2;
 
-
 namespace UTILS
 {
 	void  month_starts(boost::gregorian::date start, boost::gregorian::date end, std::vector<int>& month_locs);
-	inline std::vector<std::pair<int, int>> month_starts_in_pairs(boost::gregorian::date start, boost::gregorian::date end);
-	std::valarray<bool> create_fulltimes(CStation& station, std::vector<std::string>& var_list, boost::gregorian::date start,
-		boost::gregorian::date end, std::vector<std::string>& opt_var_list, bool do_input_station_id = true,
-bool do_qc_flags = true, bool do_flagged_obs = true);
+
+	inline std::vector<std::pair<int,int>> month_starts_in_pairs(boost::gregorian::date start, boost::gregorian::date end);
+
+	std::valarray<bool> create_fulltimes(CStation& station, std::vector<std::string> var_list, boost::gregorian::date start,
+		boost::gregorian::date end, std::vector<std::string> opt_var_list, bool do_input_station_id = true,
+		bool do_qc_flags = true, bool do_flagged_obs = true);
+
 	/*
 	Return reporting accuracy & reporting frequency for variable
 
@@ -34,7 +39,7 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 	 reporting_stats - Nx2 array, one pair for each month
 	'''
 	*/
-	std::valarray<std::pair<float, float>> monthly_reporting_statistics(CMetVar& st_var, boost::gregorian::date start, boost::gregorian::date end);
+	std::valarray<std::pair<float, float>> monthly_reporting_statistics(CMetVar& st_var, boost::gregorian::date start,boost::gregorian::date end);
 	
 	/*
 	 Apply these flags to all variables
@@ -49,11 +54,14 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 	void apply_flags_all_variables(CStation& station, const std::vector<std::string>& full_variable_list, int flag_col, std::ofstream & logfile, std::string test);
 	void apply_windspeed_flags_to_winddir(CStation& station);
 	void append_history(CStation& station, std::string text);
+
 	CMaskedArray<float>  apply_filter_flags(CMetVar& st_var);
+
 	void print_flagged_obs_number(std::ofstream& logfile, std::string test, std::string variable, int nflags);
 	inline float __cdecl MyApplyRoundFunc(float n){return std::floor(n);}
 	inline float __cdecl MyApplyCeilFunc(float n){ return std::ceil(n); }
 	inline float __cdecl MyApplyCastFloat(int n){ return static_cast<float>(n); }
+	
 	template<typename T>
 	inline T __cdecl MyApplyAbsFunc(T n){return std::abs(n);}
 	inline float __cdecl Log10Func(float n){return std::log10f(n);}
@@ -78,15 +86,19 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 	inline float reporting_frequency(CMaskedArray<float>& good_indata);
 
 	void create_bins(const varrayfloat& indata, float binwidth, varrayfloat &bins, varrayfloat  &bincenters);
+
 	void create_bins(std::valarray<CMaskedArray<float>>& indata, float binwidth, varrayfloat& bins, varrayfloat& bincenters);
+	
 	template<typename T>
 	inline T idl_median(std::valarray<T> indata)
 	{
 		std::nth_element(std::begin(indata), std::begin(indata) + indata.size() / 2, std::end(indata));
 		return indata[indata.size() / 2];
 	}
+	
 	template<typename T, typename S>
 	inline T Cast(const S &data){return static_cast<T>(data);}
+	
 	template<typename T>
 	inline T Cast(const std::string &data)
 	{
@@ -565,5 +577,35 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 	}
 
 	float mean_absolute_deviation(const varrayfloat& data, bool median = false);
+
+	inline float deg2rad(float x)
+	{
+		return x*(boost::math::constants::pi<float>())/ 180;
+	}
+	inline float rad2deg(float x)
+	{
+		return x * 180 / (boost::math::constants::pi<float>());
+	}
+	inline float get_phi(float x)
+	{
+		return deg2rad(90. - x);
+	}
+		
+	//Get the distance between two points long Earth's surface
+	std::pair<int, int>  get_dist_and_bearing(std::pair<float, float> coord1, std::pair<float, float> coord2);
+	
+}
+
+namespace DATA_READING
+
+{
+	/*
+	Fonction pour lire le contenu du fichier Quebec 2016-2017.HourlyHdr.csv et affecter ses éléments aux attributs
+	de la classe CStation
+	*/
+	void read_station_metadata(const std::string file, std::vector<CStation>& station_info);
+	bool readData(CStation& station, boost::gregorian::date  DATESTART, boost::gregorian::date  DATEEND);
+
+
 
 }

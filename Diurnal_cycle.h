@@ -21,7 +21,7 @@ namespace
 }
 namespace INTERNAL_CHECKS
 {
-	const int INTMDI = -999;
+	
 
 	inline float __cdecl MyApplySinus(float n)
 	{

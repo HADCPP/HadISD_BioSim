@@ -281,7 +281,7 @@ namespace INTERNAL_CHECKS
 
 			// A Tester avec la station   030660-99999, 30-06-2014, 855 flagged RJHD
 		}
-		UTILS::apply_flags_all_variables(station, full_variable_list, 0, logfile, "Diurnal Cycle");
+		UTILS::apply_flags_all_variables(station, full_variable_list, 0, logfile, " Diurnal Cycle");
 		UTILS::append_history(station, "Diurnal Cycle Check");
 	}
 }

@@ -111,7 +111,7 @@ namespace NETCDFUTILS
 			if (Headings["WndD"])  windD = Headings["WndD"];
 			if (Headings["Prcp"])  precipitation = Headings["Prcp"];
 			if (Headings["RelH"])  hum = Headings["RelH"];
-
+			/*
 			if (Headings["Tdew"])
 			{
 	
@@ -129,20 +129,20 @@ namespace NETCDFUTILS
 				if (Headings["Pres"])
 				{
 					
-					/*internal_tests.frequent = true;
-					internal_tests.gap = true;*/
+					//internal_tests.frequent = true;
+					//internal_tests.gap = true;
 					if (Headings["WndS"])
 					{
 						
-						/*internal_tests.odd = true;
-						internal_tests.records = true;
-						internal_tests.spike = true;
-						internal_tests.variance = true;*/
+						//internal_tests.odd = true;
+						//internal_tests.records = true;
+						//internal_tests.spike = true;
+						//internal_tests.variance = true;
 						if (Headings["WndD"])
 						{
 							
-							/*internal_tests.streaks = true;
-							internal_tests.winds = true;*/
+							//internal_tests.streaks = true;
+							//internal_tests.winds = true;
 						}
 						else
 						{
@@ -186,7 +186,7 @@ namespace NETCDFUTILS
 				internal_tests.winds = false;
 
 			}
-			
+			*/
 			if (Headings["RelH"])  hum = Headings["RelH"];
 			
 		}

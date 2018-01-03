@@ -14,6 +14,7 @@
 
 using namespace std;
 using namespace boost;
+using namespace boost::gregorian;
 using namespace PYTHON_FUNCTION;
 
 namespace UTILS
@@ -80,14 +81,14 @@ namespace UTILS
 		return month_ranges;
 	}
 
-	valarray<bool> create_fulltimes(CStation& station, std::vector<string>& var_list, boost::gregorian::date start, boost::gregorian::date end, std::vector<string>& opt_var_list, bool do_input_station_id, bool do_qc_flags, bool do_flagged_obs)
+	valarray<bool> create_fulltimes(CStation& station,  std::vector<string> var_list, boost::gregorian::date start, boost::gregorian::date end, std::vector<string> opt_var_list, bool do_input_station_id, bool do_qc_flags, bool do_flagged_obs)
 	{
 		//expand the time axis of the variables
 		boost::gregorian::date_duration DaysBetween = end - start;
 		valarray < float > fulltimes = PYTHON_FUNCTION::arange<float>(DaysBetween.days() * 24,0);
 				
 		//adjust if input netCDF file has different start date to desired
-		string time_units = station.getTime_units();
+		string time_units = station.getMetvar("time").getUnits();
 		//Extraire la date de la chaîne
 		time_units = time_units.substr(time_units.find("since "));  
 		time_units = time_units.substr(time_units.find(" "));
@@ -223,7 +224,7 @@ namespace UTILS
 			CMetVar& st_var = station.getMetvar(var);
 			//copy flags into attribute
 			st_var.setFlags(flag_locs, float(1));
-			logfile << "Applying  " << test<< "flags to  "<<var<< endl;
+			logfile << "  Applying  " << test<< "   flags to     "<<var<< endl;
 		}
 	}
 	/*
@@ -568,6 +569,521 @@ namespace UTILS
 		}
 		
 		return mad;// mean_absolute_deviation
+	}
+
+	//Get the distance between two points long Earth's surface
+	pair<int, int>  get_dist_and_bearing(pair<float, float> coord1, pair<float, float> coord2)
+	{
+		float lat1 = coord1.first;
+		float lon1 = coord1.second;
+		float lat2 = coord2.first;
+		float lon2 = coord2.second; 
+
+		double R = 6371.229; // km
+
+		float phi1 = get_phi(lat1);
+		float phi2 = get_phi(lat2);
+
+		float theta1 = deg2rad(lon1);
+		float theta2 = deg2rad(lon2);
+
+		float cosinus = (std::sin(phi1) * std::sin(phi2) * std::cos(theta1 - theta2) + std::cos(phi1) * std::cos(phi2));
+		float arc = std::acos(cosinus);
+
+		lat1 = deg2rad(lat1);
+		lon1 = deg2rad(lon1);
+		lat2 = deg2rad(lat2);
+		lon2 = deg2rad(lon2);
+			
+		float bearing = rad2deg(std::atan2(std::sin(lon2 - lon1)*std::cos(lat2), std::cos(lat1)*std::sin(lat2) - std::sin(lat1)*std::cos(lat2)*std::cos(lon2 - lon1)));
+
+		if (bearing < 0)  bearing += 360.;
+
+		float distance = arc*R;
+
+		return make_pair(int(distance), int(bearing));
+			
+	}
+
+}
+
+namespace DATA_READING
+{
+	void read_station_metadata(const std::string file, std::vector<CStation>& station_info)
+	{
+
+
+		char_separator<char> sep(",");
+		std::ifstream input;
+		std::stringstream sst;
+		sst << file;
+		std::string chaine = sst.str();
+		try
+		{
+			input.open(chaine.c_str());
+		}
+		catch (std::exception& e)
+		{
+			cout << e.what() << endl;
+		}
+		if (!input) exit(1);
+		std::string ligne = "";
+		getline(input, ligne);
+		/*while (!input.eof())
+		{
+		getline(input, ligne);
+		int i = 0;
+		std::string data[22] = { "0" };
+		tokenizer<char_separator<char>> tokens(ligne, sep);
+		for (tokenizer<char_separator<char>>::const_iterator t = tokens.begin(); t != tokens.end();t++)
+		{
+
+		(t->c_str() != "") ? data[i] = t->c_str() : data[i] = "";
+		i++;
+		}
+
+		CStation station = CStation::CStation(data[0], data[1], atof(data[2].c_str()), atof(data[3].c_str()),
+		atof(data[4].c_str()), data[12].c_str());
+		station_info.push_back(station);
+		}*/
+
+
+		char  delimiter = ',';
+		while (!input.eof())
+		{
+			getline(input, ligne);
+			std::stringstream iss(ligne);
+			std::string token;
+			int i = 0;
+			std::string data[22] = { "0" };
+
+			while (getline(iss, token, delimiter))
+			{
+				data[i] = token.c_str();
+				i++;
+			}
+			CStation stat = CStation(data[0], data[1], atof(data[2].c_str()), atof(data[3].c_str()), atof(data[4].c_str()), data[12].c_str());
+			station_info.push_back(stat);
+
+		}
+	}
+
+	//Read each station variables data and put them in the appropriate data structures.
+	bool readData(CStation& station, boost::gregorian::date  DATESTART,boost::gregorian::date DATEEND)
+	{
+		bool exist_file = true;
+
+		std::string nom_file = (station).getName() + " [" + (station).getId() + "]";
+		std::string fichier = CSV_OUTFILE_LOCS + nom_file + ".csv";
+		boost::filesystem::path p{ fichier };
+
+		if (!boost::filesystem::exists(p))
+		{
+			exist_file = false;
+
+			std::string nom = (station).getName();
+			auto pos = std::string::npos;
+			while ((pos = nom.find('é')) != std::string::npos || (pos = nom.find('è')) != std::string::npos || (pos = nom.find('ê')) != std::string::npos)
+			{
+				nom.replace(pos, 1, "e");
+			}
+			while ((pos = nom.find('à')) != std::string::npos)
+			{
+				nom.replace(pos, 1, "a");
+			}
+			while ((pos = nom.find('\'')) != std::string::npos)
+			{
+				nom.replace(pos, 1, " ");
+			}
+
+			nom_file = nom + " [" + (station).getId() + "]";
+			fichier = CSV_OUTFILE_LOCS + nom_file + ".csv";
+			boost::filesystem::path p1{ fichier };
+			if (boost::filesystem::exists(p1))
+			{
+				exist_file = true;
+				cout << p1.filename() << endl;
+				cout << "\n Reading data from CSV files \n" << endl;
+				cout << "Reading data from  " << p1.parent_path() << endl;
+
+			}
+		}
+
+		else
+		{
+			cout << p.filename() << endl;
+			cout << "\n Reading data from CSV files \n" << endl;
+			cout << "Reading data from  " << p.parent_path() << endl;
+
+		}
+		if (!exist_file) return false;
+			
+		cout << "Station Identifier:  " << (station).getId() << endl;
+
+		std::string namefile = station.getId();
+
+		//duree entre DATASTART et DATAEND
+		date end = DATEEND + years(1);
+		boost::gregorian::date_duration DaysBetween = end - DATESTART;
+		int HoursBetween = int(DaysBetween.days()) * 24;
+		std::vector<int> TimeStamps;
+		PYTHON_FUNCTION::linspace<int>(TimeStamps, 0, HoursBetween - 1, HoursBetween);
+		std::vector<int> ValidYears;
+		PYTHON_FUNCTION::linspace<int>(ValidYears, int(DATESTART.year()), int(DATEEND.year()), int(DATEEND.year() - DATESTART.year() + 1));
+		std::string dubiousfile = LOG_OUTFILE_LOCS + "dubious_data_files.txt";
+		boost::gregorian::date  dbg_sttime = boost::gregorian::day_clock::local_day();
+
+		//Création et initialisation des tableaux où mettre les variables meteo
+
+		std::valarray<float> temperatures(INTMDI, HoursBetween);
+		std::valarray<int> temperature_flags(INTMDI, HoursBetween);
+		std::valarray<float> dewpoints(INTMDI, HoursBetween);
+		std::valarray<int> dewpoint_flags(INTMDI, HoursBetween);
+		std::valarray<float> windspeeds(INTMDI, HoursBetween);
+		std::valarray<int> windspeeds_flags(INTMDI, HoursBetween);
+		std::valarray<float> humidity(INTMDI, HoursBetween);
+		std::valarray<int> humiditys_flags(INTMDI, HoursBetween);
+		std::valarray<float> winddirs(INTMDI, HoursBetween);
+		std::valarray<int> winddirs_flags(INTMDI, HoursBetween);
+		std::valarray<float>  slp(INTMDI, HoursBetween);
+		std::valarray<int> slp_flags(INTMDI, HoursBetween);
+		std::valarray<float> precip(INTMDI, HoursBetween);
+		std::valarray<int> precip_flags(INTMDI, HoursBetween);
+
+
+		//if extra : Ajouter des variables meteo supplémentaires
+
+		boost::gregorian::date  dbg_lasttime = boost::gregorian::day_clock::local_day();
+
+		//ouvrir le fichier csv qui contient des données
+		int  last_obs_time = 0;
+		std::ifstream input;
+		std::stringstream sst;
+		sst << fichier;
+		std::string chaine = sst.str();
+
+		boost::filesystem::exists(chaine.c_str());
+		try
+		{
+			input.open(chaine.c_str());
+		}
+		catch (std::exception e)
+		{
+			std::cout << e.what() << endl;
+		}
+		if (!input) return true;
+		std::string ligne = "";
+		std::string token;
+		char  delimiter = ',';
+		map<std::string, int> Headings;
+		// Lecture de l'entête du fichier et récupération des entêtes des principales variables (si elles existent)
+		// Indices des variables;
+		int temp, dew, hum, windS, windD, pres, precipitation;
+		getline(input, ligne);
+		char_separator<char> sep(",");
+		tokenizer<char_separator<char>> tokens(ligne, sep);
+		int i = 0;
+		for (tokenizer<char_separator<char>>::const_iterator t = tokens.begin(); t != tokens.end(); t++)
+		{
+			Headings[t->c_str()] = i++;
+		}
+		bool sortie = false;
+				 
+		if (Headings["Tair"])  temp = Headings["Tair"];
+		if (Headings["Tdew"])  dew = Headings["Tdew"];
+		if (Headings["Pres"])  pres = Headings["Pres"];
+		if (Headings["WndS"])  windS = Headings["WndS"];
+		if (Headings["WndD"])  windD = Headings["WndD"];
+		if (Headings["Prcp"])  precipitation = Headings["Prcp"];
+		if (Headings["RelH"])  hum = Headings["RelH"];
+			/*
+			if (Headings["Tdew"])
+			{
+
+			//internal_tests.climatological = true;
+			if (Headings["Prcp"])
+			{
+
+			//internal_tests.humidity = true;
+			}
+			else
+			{
+			internal_tests.humidity = false;
+			}
+
+			if (Headings["Pres"])
+			{
+
+			//internal_tests.frequent = true;
+			//internal_tests.gap = true;
+			if (Headings["WndS"])
+			{
+
+			//internal_tests.odd = true;
+			//internal_tests.records = true;
+			//internal_tests.spike = true;
+			//internal_tests.variance = true;
+			if (Headings["WndD"])
+			{
+
+			//internal_tests.streaks = true;
+			//internal_tests.winds = true;
+			}
+			else
+			{
+			internal_tests.streaks = false;
+			internal_tests.winds = false;
+			}
+			}
+			else
+			{
+			internal_tests.odd = false;
+			internal_tests.records = false;
+			internal_tests.spike = false;
+			internal_tests.variance = false;
+			internal_tests.streaks = false;
+			internal_tests.winds = false;
+			}
+			}
+			else
+			{
+			internal_tests.frequent = false;
+			internal_tests.gap = false;
+			internal_tests.odd = false;
+			internal_tests.records = false;
+			internal_tests.spike = false;
+			internal_tests.variance = false;
+			internal_tests.streaks = false;
+			internal_tests.winds = false;
+			}
+			}
+			else
+			{
+			internal_tests.climatological = false;
+			internal_tests.humidity = false;
+			internal_tests.frequent = false;
+			internal_tests.gap = false;
+			internal_tests.odd = false;
+			internal_tests.records = false;
+			internal_tests.spike = false;
+			internal_tests.variance = false;
+			internal_tests.streaks = false;
+			internal_tests.winds = false;
+
+			}
+			*/
+
+		
+
+		while (!input.eof())
+		{
+			getline(input, ligne);
+			std::stringstream iss(ligne);
+			std::string year, month, day;
+			int hour;
+			if (ligne == "") break;
+
+			vector<std::string> data;
+
+			while (getline(iss, token, delimiter))
+			{
+				data.push_back(token.c_str());
+			}
+			year = data[0];
+
+			// tester si la date de l'observation appartient à l'intervalle d'années désiré
+			int annee = std::stoi(year);
+
+			if (!(std::find(ValidYears.begin(), ValidYears.end(), annee) != ValidYears.end())) continue;
+
+			month = (data[1].size() == 1) ? "0" + data[1] : data[1];
+			day = (data[2].size() == 1) ? "0" + data[2] : data[2];
+			hour = atoi(data[3].c_str());
+			boost::gregorian::date  dt_time;    // Date au format  aaaammdd
+			try
+			{
+				dt_time = boost::gregorian::date_from_iso_string(year + month + day);
+			}
+			catch (boost::gregorian::bad_day_of_month)
+			{
+				std::cout << "error with boost::gregorian";
+			}
+			//duree entre DATESTART et la date de l'observation
+
+			boost::gregorian::date_duration obs_date = dt_time - DATESTART;
+
+			int  obs_time = obs_date.days() * 24 + hour;
+
+			int time_loc = obs_time;
+			//test if this time_loc out of bounds:
+
+			if (time_loc != HoursBetween)
+			{
+				(Headings["Tair"]) ? temperatures[time_loc] = atof(data[temp].c_str()) : temperatures[time_loc] = -999;
+				temperature_flags[time_loc] = INTMDI;
+				(Headings["Tdew"]) ? dewpoints[time_loc] = atof(data[dew].c_str()) : dewpoints[time_loc] = -999;
+				dewpoint_flags[time_loc] = INTMDI;
+				(Headings["RelH"]) ? humidity[time_loc] = atof(data[hum].c_str()) : humidity[time_loc] = -999;
+				humiditys_flags[time_loc] = INTMDI;
+				(Headings["WndS"]) ? windspeeds[time_loc] = atof(data[windS].c_str()) : windspeeds[time_loc] = -999;
+				windspeeds_flags[time_loc] = INTMDI;
+				(Headings["WndD"]) ? winddirs[time_loc] = atof(data[windD].c_str()) : winddirs[time_loc] = -999;
+				winddirs_flags[time_loc] = INTMDI;
+				(Headings["Pres"]) ? slp[time_loc] = atof(data[pres].c_str()) : slp[time_loc] = -999;
+				slp_flags[time_loc] = INTMDI;
+				(Headings["Prcp"]) ? precip[time_loc] = atof(data[precipitation].c_str()) : precip[time_loc] = -999;
+				precip_flags[time_loc] = INTMDI;
+			}
+		}
+
+
+		vector<std::string> full_var_list = process_var;
+		if (carry_thru_vars.size() != 0)
+		{
+			copy(carry_thru_vars.begin(), carry_thru_vars.end(), std::back_inserter(full_var_list));
+		}
+		full_var_list.push_back("time");
+
+		for (std::string variable : full_var_list)
+		{
+			varrayfloat dummy(HoursBetween);
+			// temperature  min et max
+			if (variable == "temperatures")
+			{
+				dummy = temperatures[temperatures != float(INTMDI)];
+				float max_temp;
+				(Headings["Tair"]) ? max_temp = dummy.max() : max_temp = -999;
+				float min_temp;
+				(Headings["Tair"]) ? min_temp = dummy.min() : min_temp = -999;
+
+				CMetVar this_var(variable, "Dry bulb air temperature at screen height (~2m)");
+				this_var.setMdi(INTMDI);
+				this_var.setUnits("degree_Celsius");
+				this_var.setValidMin(min_temp);
+				this_var.setValidMax(max_temp);
+				this_var.setCoordinates("latitude longitude elevation");
+				this_var.setStandard_name("surface_temperature");
+				this_var.setFdi(-2.e30);
+
+				this_var.setData(temperatures);
+
+				//Ajouter la variable méteo à la liste des variables de la station stat
+				station.setMetVar(this_var, variable);
+			}
+			if (variable == "dewpoints")
+			{
+				dummy = dewpoints[dewpoints != float(INTMDI)];
+				float max_dew;
+				(Headings["Tdew"]) ? max_dew = dummy.max() : max_dew = -999;
+				float min_dew;
+				(Headings["Tdew"]) ? min_dew = dummy.min() : min_dew = -999;
+
+				CMetVar this_var(variable, "Dew point temperature at screen height (~2m)");
+				this_var.setMdi(INTMDI);
+				this_var.setUnits("degree_Celsius");
+				this_var.setCellmethods("latitude: longitude: time: point (nearest to reporting hour)");
+				this_var.setValidMin(min_dew);
+				this_var.setValidMax(max_dew);
+				this_var.setCoordinates("latitude longitude elevation");
+				this_var.setStandard_name("dew_point_temperature");
+				this_var.setFdi(-2.e30);
+
+				this_var.setData(dewpoints);
+
+				//Ajouter la variable méteo à la liste des variables de la station stat
+				station.setMetVar(this_var, variable);
+			}
+			if (variable == "windspeeds")
+			{
+				dummy = windspeeds[windspeeds != float(INTMDI)];
+				float max_ws;
+				(Headings["WndS"]) ? max_ws = dummy.max() : max_ws = -999;
+				float min_ws;
+				(Headings["WndS"]) ? min_ws = dummy.min() : min_ws = -999;
+
+				CMetVar this_var(variable, "Wind speed at mast height (~10m)");
+				this_var.setMdi(INTMDI);
+				this_var.setUnits("meters per second");
+				this_var.setCellmethods("latitude: longitude: time: point (nearest to reporting hour)");
+				this_var.setValidMin(min_ws);
+				this_var.setValidMax(max_ws);
+				this_var.setCoordinates("latitude longitude elevation");
+				this_var.setStandard_name("wind_speed");
+				this_var.setFdi(-2.e30);
+
+				this_var.setData(windspeeds);
+
+				//Ajouter la variable méteo à la liste des variables de la station stat
+				station.setMetVar(this_var, variable);
+			}
+			if (variable == "winddirs")
+			{
+
+				CMetVar this_var(variable, "Wind Direction at mast height (~10m)");
+				this_var.setMdi(INTMDI);
+				this_var.setUnits("degree");
+				this_var.setCellmethods("latitude: longitude: time: point (nearest to reporting hour)");
+				this_var.setValidMin(0);
+				this_var.setValidMax(360);
+				this_var.setCoordinates("latitude longitude elevation");
+				this_var.setStandard_name("wind_from_direction");
+				this_var.setFdi(-2.e30);
+
+				this_var.setData(winddirs);
+
+				//Ajouter la variable méteo à la liste des variables de la station stat
+				station.setMetVar(this_var, variable);
+			}
+
+			if (variable == "slp")
+			{
+				dummy = slp[slp != float(INTMDI)];
+				float smax;
+				float smin;
+				(Headings["pres"]) ? smax = dummy.max() : smax = -999;
+				(Headings["pres"]) ? smin = dummy.min() : smin = -999;
+
+				CMetVar this_var(variable, "Reported Sea Level Pressure at screen height (~2m)");
+				this_var.setMdi(INTMDI);
+				this_var.setUnits("hPa");
+				this_var.setCellmethods("latitude: longitude: time: point (nearest to reporting hour)");
+				this_var.setValidMin(smin);
+				this_var.setValidMax(smax);
+				this_var.setCoordinates("latitude longitude elevation");
+				this_var.setStandard_name("air_pressure_at_sea_level");
+				this_var.setFdi(-2.e30);
+
+				this_var.setData(slp);
+
+				//Ajouter la variable méteo à la liste des variables de la station stat
+				station.setMetVar(this_var, variable);
+			}
+			if (variable == "time")
+			{
+				CMetVar this_var(variable, "time_of_measurement");
+				this_var.setUnits("hours since " + DATESTART.year());
+				this_var.setCalendar("gregorian | start_year : " + to_string(DATESTART.year()) + " end_month : " + to_string(DATEEND.year()));
+				this_var.setValidMin(0);
+				this_var.setStandard_name("time");
+
+				dummy.resize(HoursBetween);
+				std::iota(std::begin(dummy), std::end(dummy), 0);
+
+				this_var.setData(dummy);
+
+				//Ajouter la variable méteo à la liste des variables de la station stat
+				station.setMetVar(this_var, variable);
+
+			}
+		}
+
+		std::cout << " Reading data to netcdf file" << endl;
+
+		std::cout << "Done station " << station.getName() << endl;
+		std::cout << boost::gregorian::day_clock::local_day() - dbg_sttime << " s" << endl;
+		std::cout << boost::gregorian::day_clock::local_day() << endl;
+
+		return sortie;
 	}
 
 }

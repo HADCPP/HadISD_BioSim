@@ -27,7 +27,6 @@ public:
 		CMetVar::m_name = name;
 		CMetVar::m_long_name = long_name;
 		m_fdi = 0;
-		
 	}
 	
 
@@ -37,9 +36,9 @@ public:
 	void setDtype(std::string dtype){ m_dtype = dtype; }
 	void setUnits(std::string units){ m_units = units; }
 	void setCalendar(std::string calendar){ m_calendar = calendar; }
-	void setMdi(std::string mdi){ m_mdi = mdi; }
-	void setValidMax(std::string valid_max){ m_valid_max = valid_max; }
-	void setValidMin(std::string valid_min){ m_valid_min = valid_min; }
+	void setMdi(float mdi){ m_mdi = mdi; }
+	void setValidMax(float valid_max){ m_valid_max = valid_max; }
+	void setValidMin(float valid_min){ m_valid_min = valid_min; }
 	void setCoordinates(std::string coordinates){ m_coordinates = coordinates; }
 	void setFdi(float fdi){ m_fdi = fdi; }
 	void setCellmethods(std::string cell_methods){ m_cell_methods = cell_methods; }
@@ -50,11 +49,12 @@ public:
 	void setFlags(CMaskedArray<float> flag){ m_flags = flag; }
 	void setFlags(varraysize v_flag,float flag){ m_flags.m_data[v_flag] = flag; }
 	void setFlags(size_t size, float flag){ m_flags.resize(size,flag); }
-	void setData(varrayfloat data)
+	void setData(varrayfloat data, float mask_val=-999)
 	{ 
 		m_dataVar.m_data = data; 
-		m_dataVar.m_mask.resize(data.size(), false);
+		m_dataVar.m_mask.resize(data.size(),false);
 		m_dataVar.m_masked_indices.clear();
+		m_dataVar.masked(mask_val);
 	}
 	void setData(varraysize data, float val){ m_dataVar.m_data[data] = val; }
 	void setData(CMaskedArray<float> data){ m_dataVar = data; }
@@ -63,7 +63,7 @@ public:
 		m_dataVar.m_data[indices] = value;
 		m_dataVar.m_mask[indices] = mask;
 	}
-	std::string getMdi(){ return m_mdi; }
+	float getMdi(){ return m_mdi; }
 	float getFdi(){ return m_fdi; }
 	std::string getDtype(){ return m_dtype; }
 	std::string getStandardname(){ return m_standard_name; }
@@ -73,14 +73,14 @@ public:
 	const varrayfloat& getData()const{ return m_dataVar.m_data; }
 	CMaskedArray<float>&  getAllData(){ return m_dataVar; }
 	CMaskedArray<float>& getFlags(){ return m_flags; }
-	std::string getValidMax(){return m_valid_max ; }
-	std::string getValidMin(){return m_valid_min ; }
+	float getValidMax(){return m_valid_max ; }
+	float getValidMin(){return m_valid_min ; }
 	std::string getCoordinates(){ return m_coordinates; }
 	std::string getCellmethods(){ return m_cell_methods; }
 	std::string getCalendar(){ return m_calendar; }
 	std::string toString() 	{ return "Variable :" + m_name + ", " + m_long_name; }
 
-	void set_MetVar_attributes(std::string standard_name, std::string units, std::string mdi, std::string dtype)
+	void set_MetVar_attributes(std::string standard_name, std::string units, float mdi, std::string dtype)
 	{
 		m_units = units;
 		m_standard_name = standard_name;
@@ -96,11 +96,11 @@ protected :
 
 	std::string m_units;
 	std::string m_standard_name;
-	std::string m_mdi;
+	float m_mdi;
 	std::string m_dtype;
 	std::string m_calendar;
-	std::string m_valid_max;
-	std::string m_valid_min;
+	float m_valid_max;
+	float m_valid_min;
 	std::string m_coordinates;
 	std::string m_cell_methods;
 	float m_fdi;// Flagged value
@@ -120,9 +120,9 @@ public:
 		virtual ~CStation();
 
 		
-		double getLat()const{ return m_lat; }
-		double getLon()const{ return m_lon; }
-		double getElev()const{ return m_elev; }
+		float getLat()const{ return m_lat; }
+		float getLon()const{ return m_lon; }
+		float getElev()const{ return m_elev; }
 		const std::string& getId()const{ return m_id; }
 		const std::string& getName()const{ return m_name; }
 		const std::string& getWmoId()const{ return m_wmoid; }
@@ -153,6 +153,10 @@ public:
 			m_qc_flags = qc;
 		}
 
+		bool CStation::estEgal(CStation const& stat) const
+		{
+			return (m_id == stat.m_id && m_lat == stat.m_lat && m_lon == stat.m_lon && m_elev == stat.m_elev);     
+		}
 		std::string toString();
 		
 
@@ -169,3 +173,6 @@ protected:
 	s_time m_time;
 	std::string m_history;
 };
+
+bool operator==(CStation const& a, CStation const& b);
+bool operator!=(CStation const& a, CStation const& b);

@@ -1,10 +1,6 @@
 #pragma once
+
 #include "station.h"
-#include "netCDFUtils.h"
-#include "netcdf.h"
-#include "ncFile.h"
-#include "ncDim.h"
-#include "ncVar.h"
 #include "Utilities.h"
 #include "utils.h"
 
@@ -39,16 +35,8 @@
 
 
 
-namespace
-{
-	std::vector<std::string> process_var{ "temperatures", "dewpoints", "windspeeds", "winddirs", "slp"};
-	std::vector<std::string> carry_thru_vars;
-	//std::vector<std::string> process_var{ "temperatures", "dewpoints", "windspeeds", "winddirs", "slp", "total_cloud_cover", "low_cloud_cover", "mid_cloud_cover", "high_cloud_cover" };
-	//std::vector<std::string> carry_thru_vars{ "cloud_base", "precip1_depth", "precip1_period", "wind_gust", "past_sigwx1" };
-	
-}
 namespace INTERNAL_CHECKS
 
 {
-	void internal_checks(CStation& station, test mytest , bool second,std::string *DATE);
+	void internal_checks(CStation& station, test mytest, boost::gregorian::date  DATESTART, boost::gregorian::date  DATEEND, std::ofstream& logfile);
 }

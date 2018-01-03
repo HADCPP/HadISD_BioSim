@@ -9,7 +9,7 @@ using namespace std;
 
 
 
-	CStation::CStation(string id,string name, double lat, double lon, double elev,string wmo)
+	CStation::CStation(string id, string name, double lat, double lon, double elev, string wmo)
 	{
 		m_id = id;
 		m_lon = lon;
@@ -23,7 +23,15 @@ using namespace std;
 	}
 	string CStation::toString()
 	{
-		return "CStation  :" + m_id + "  "+ m_name+  "+  Longitude: " + to_string(m_lon) + "  Latitude:  " + to_string(m_lat) + "  Elevation  :" + to_string(m_elev);
+		return "CStation  :" + m_id + "  " + m_name + "+  Longitude: " + to_string(m_lon) + "  Latitude:  " + to_string(m_lat) + "  Elevation  :" + to_string(m_elev);
 
 	}
-	
+
+	bool operator==(CStation const& a, CStation const& b)
+	{
+		return a.estEgal(b);
+	}
+	bool operator!=(CStation const& a, CStation const& b)
+	{
+		return !a.estEgal(b);
+	}

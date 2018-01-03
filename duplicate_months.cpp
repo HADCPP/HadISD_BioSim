@@ -97,7 +97,7 @@ namespace INTERNAL_CHECKS
 		for (string variable: variable_list)
 		{
 			CMetVar & st_var = station.getMetvar(variable); //Recuperer la variable meteo de la CStation
-			float missing_value = Cast<float>(st_var.getMdi());
+			float missing_value = st_var.getMdi();
 			valarray<int> duplicated(0,month_ranges.size());
 			
 			int sm = 0;
@@ -111,7 +111,7 @@ namespace INTERNAL_CHECKS
 					indices[i] = source_month->first + i;
 				}
 				CMaskedArray<float> source_data=st_var.getData()[indices];
-				source_data.masked(Cast<float>(st_var.getMdi()));
+				source_data.masked(st_var.getMdi());
 				if (duplicated[sm] == 0)   // don't repeat if already a duplicated
 				{
 					std::vector<pair<int, int>> ::const_iterator target_month = source_month;

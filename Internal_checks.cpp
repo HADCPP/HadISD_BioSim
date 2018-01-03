@@ -1,49 +1,15 @@
 #include "Internal_checks.h"
 
 
-
 using namespace std;
-using namespace NETCDFUTILS;
-using namespace netCDF;
 using namespace boost;
 
 
 namespace INTERNAL_CHECKS
 {
-	void internal_checks(CStation& station, test mytest, bool second, string *DATE)
+	void internal_checks(CStation& station, test mytest, boost::gregorian::date  DATESTART, boost::gregorian::date  DATEEND, std::ofstream& logfile)
 	{
-		boost::gregorian::date  DATESTART = boost::gregorian::date_from_iso_string(DATE[0]);
-		boost::gregorian::date  DATEEND = boost::gregorian::date_from_iso_string(DATE[1]);
-		bool first = !second;
-		
-		int st = 0;
-			
-		cout << boost::gregorian::day_clock::local_day() << endl;  //Date du jour au format Www Mmm dd hh:mm:ss yyyy\n
-		cout << "Station Identifier:  " << (station).getId() << endl;
-		// Ouverture du fichier en mode ecriture lors du premier appel de la fonction ou en mode append la seconde fois
-		ofstream logfile;
-		stringstream sst;
-		sst << LOG_OUTFILE_LOCS << (station).getId() << ".log";
-
-		if (first)
-		{
-			try{logfile.open(sst.str().c_str());}
-			catch (std::exception e)
-			{
-				cout << e.what() << endl;
-			}
-		}
-		else
-		{
-			try{logfile.open(sst.str().c_str(), ofstream::out | ofstream::app);}
-			catch (std::exception e)
-			{
-				cout << e.what() << endl;
-			}
-		}
-		logfile << boost::gregorian::day_clock::local_day() << endl;
-		logfile << " Internal Checks " << endl;
-		logfile << " Station Identifier  :  " << (station).getId() << endl;
+		bool second = false;
 
 		boost::posix_time::ptime process_start_time = boost::posix_time::second_clock::local_time();
 			
@@ -62,53 +28,23 @@ namespace INTERNAL_CHECKS
 		}
 		// if running through the first time
 		valarray<bool> match_to_compress;
-		if (first)
+		
+			
+		logfile << "Total CStation record size  " << station.getMetvar("time").getData().size() << endl;
+		match_to_compress = UTILS::create_fulltimes(station, process_var, DATESTART, DATEEND, carry_thru_vars);
+
+		//Initialiser CStation.qc_flags
+
+		station.InitializeQcFlags(69, station.getMetvar("time").getData().size());
+
+		for (string var : process_var)
 		{
-			// tester si le fichier existe
-			string filename = NETCDF_DATA_LOCS + (station).getId() + ".nc";
-			boost::filesystem::path p{ filename };
-			try
-			{
-				boost::filesystem::exists(p);
-			}
-			catch (std::exception&  e)
-			{
-				cout << e.what() << endl;
-			}
-			//read in data
-			NETCDFUTILS::read(filename, station, process_var, carry_thru_vars);
-
-			//lire dans le fichier netcdf
-			logfile << "Total CStation record size  " << station.getMetvar("time").getData().size() << endl;
-			match_to_compress = UTILS::create_fulltimes(station, process_var, DATESTART, DATEEND, carry_thru_vars);
-
-			//Initialiser CStation.qc_flags
-
-			station.InitializeQcFlags(69, station.getMetvar("time").getData().size());
-
-			for (string var : process_var)
-			{
-				CMetVar& st_var = station.getMetvar(var);
-				st_var.setReportingStats(UTILS::monthly_reporting_statistics(st_var, DATESTART, DATEEND));
-			}
+			CMetVar& st_var = station.getMetvar(var);
+			st_var.setReportingStats(UTILS::monthly_reporting_statistics(st_var, DATESTART, DATEEND));
 		}
-			//or if second pass through?
-		else if (second)
-		{
-			string filename = NETCDF_DATA_LOCS + (station).getId() + "_mask.nc";
-			boost::filesystem::path p{ filename };
-			try
-			{
-				boost::filesystem::exists(p);
-			}
-			catch (std::exception&  e)
-			{
-				cout << e.what() << endl;
-			}
+		
+		
 
-			NETCDFUTILS::read(filename, station, process_var, carry_thru_vars);
-			match_to_compress = UTILS::create_fulltimes(station, process_var, DATESTART, DATEEND, carry_thru_vars);
-		}
 		if (mytest.duplicate) //check on temperature ONLY
 		{
 			//Appel à la fonction duplicate_months de qc_tests
@@ -177,17 +113,7 @@ namespace INTERNAL_CHECKS
 			wdc(station, { 62, 63, 64 }, DATESTART, DATEEND, logfile);
 				 
 		}
-		//Write to file
-		if (first)
-		{
-			string filename = NETCDF_DATA_LOCS + (station).getId() + "_internal.nc";
-			//NETCDFUTILS::write(filename, station, process_var, carry_thru_vars, match_to_compress);
-		}
-		else if (second)
-		{
-			string filename = NETCDF_DATA_LOCS + (station).getId() + "_internal2.nc";
-			NETCDFUTILS::write(filename, station, process_var, carry_thru_vars, match_to_compress);
-		}
+		
 		logfile << boost::gregorian::day_clock::local_day() << endl;
 		logfile << "processing took " << posix_time::second_clock::local_time() - process_start_time << "  s" << endl;
 		if (logfile)
