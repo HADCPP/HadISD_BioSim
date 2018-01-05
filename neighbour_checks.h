@@ -4,6 +4,7 @@
 #include "station.h"
 #include "utils.h"
 #include "Internal_checks.h"
+#include "Statistic.h"
 
 #include <vector>
 #include <map>
@@ -29,6 +30,18 @@ namespace
 	std::map<const char*, int> FLAG_OUTLIER_DICT = { { "temperatures", 41 }, { "dewpoints", 42 }, { "slp", 43 } };
 
 	const int N_NEIGHBOURS = 10;
+
+	std::map<const char*, varraysize> FLAG_COL_DICT = { { "temperatures", { 0, 1, 4, 5, 8, 12, 16, 20, 24, 27, 41, 44, 54, 58 } },
+	{ "dewpoints", { 0, 2, 4, 6, 8, 9, 13, 17, 21, 25, 28, 30, 31, 32, 42, 45, 55, 59 } },
+	{ "slp", { 0, 3, 4, 7, 11, 15, 19, 23, 26, 29, 43, 46, 57, 60 } },
+	{ "windspeeds", { 0, 4, 10, 14, 18, 22, 47, 56, 61, 62, 63, 64, 65 } },
+	{ "winddirs", { 0, 4, 10, 14, 18, 22, 47, 48, 56, 61, 62, 63, 64, 65, 66, 67, 68 } } };
+	
+	
+	std::map<const char*, std::map<const char*, int> > UNFLAG_COL_DICT = { { "spike", { { "temperatures", 27 }, { "dewpoints", 28 }, { "slp", 29 } } },
+	{ "climatological", { { "temperatures", 24 }, { "dewpoints", 25 }, { "slp", 26 } } },
+	{ "odd", { { "temperatures", 54 }, { "dewpoints", 55 }, { "slp", 57 } } },
+	{ "gap", { { "slp", 7 } } } };
 }
 
 
@@ -50,7 +63,7 @@ namespace NEIGHBOUR_CHECKS
 
 	:returns: final set of neighbours as numbers in station list
 	*/
-	void get_all_neighbours(int station_loc,float st_elev, fvector& distances, fvector& bearings, fvector& elevations , ivector& neighbours, ivector& neighbour_quadrants,float sep_limit = 500, float elev_limit = 300, int max_neighbours = 20);
+	void get_all_neighbours(int station_loc, float st_elev, fvector& distances, fvector& bearings, fvector& elevations, varraysize& neighbours, varraysize& neighbour_quadrants, float sep_limit = 500, float elev_limit = 300, int max_neighbours = 20);
 
 
 	/* 
@@ -72,11 +85,23 @@ namespace NEIGHBOUR_CHECKS
 	From the list of nearby stations select the ones which will be good neighours for the test.
     Select on basis of correlation, overlap of data points and bearing (quadrants)
 	*/
-	void  select_neighbours(CStation& station, std::string variable, const std::vector<CStation>& station_info, ivector neighbours,
-		ivector neighbour_distances, ivector neighbour_quadrants, boost::gregorian::date start, boost::gregorian::date  end, std::ofstream& logfile);
+	std::vector<size_t>  select_neighbours(CStation& station, std::string variable, const std::vector<CStation>& station_info, varraysize& neighbours,
+		ivector& neighbour_distances, varraysize& neighbour_quadrants, boost::gregorian::date start, boost::gregorian::date  end, std::ofstream& logfile);
 	
 	/*Detect which observations are outliers*/
-	void detect(CStation& station, ivector  neighbour, std::string  variable, varrayfloat flags, varrayfloat neighbour_count, boost::gregorian::date start, end, int distance = 0)è
+	void detect(CStation& station, varraysize&  neighbour, std::string  variable, varrayfloat& flags, varrayfloat& neighbour_count, boost::gregorian::date start, boost::gregorian::date end, int distance = 0);
+
+
+	/*
+	Return locations where flags to be set to zero
+	*/
+	varraysize unflagging_locs(varrayfloat& differences, varrayfloat& flags, varrayfloat& neigh_count, varrayfloat dpd_count, float flag_value = 1);
+
+	/*
+	Set up and run the unflagging process for the specified tests
+	*/
+	void do_unflagging(CStation& station, std::string variable, std::vector<CMaskedArray<float>>& all_data,
+		varrayfloat& reporting_accuracies, varrayfloat&  neigh_count, varrayfloat& dpd_flags, boost::gregorian::date start, std::ofstream& logfile);
 
 	void neighbour_checks(CStation& station, const std::vector<CStation>& station_info, boost::gregorian::date start, boost::gregorian::date  end, std::ofstream&  logfile);
 }

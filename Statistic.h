@@ -41,7 +41,7 @@ enum TStat{ LOWEST, MEAN, SUM, SUM², STD_DEV, STD_DEV_OVER_POP, STD_ERR, COEF_V
 //Q¹		: todo : first quartile value
 //Q³		: todo : thirdth quartile value
 //INTER_Q	: todo : the inter quartile value (Q³-Q¹)
-enum TStatEx{ MAD = NB_STAT_TYPE, SKEWNESS, KURTOSIS, MEDIAN, Q² = MEDIAN, MODE, Qᴸ, Q¹, Q³, Qᴴ, INTER_Q, NB_STAT_TYPE_EX };
+enum TStatEx{ MAD = NB_STAT_TYPE, SKEWNESS, KURTOSIS, MEDIAN, Q² = MEDIAN, MODE, Qᴸ, Q¹, Q³, Qᴴ, INTER_Q, NB_STAT_TYPE_EX,MED};
 //MEAN_X	: mean of x
 //MEAN_Y	: mean of y
 //INTERCEP	: intercep of the regression
@@ -55,6 +55,7 @@ enum TStatEx{ MAD = NB_STAT_TYPE, SKEWNESS, KURTOSIS, MEDIAN, Q² = MEDIAN, MODE
 //COEF_D	: Coeficient of determination
 //COEF_C	: Coeficient of correlation
 //STAT_R²	: R²
+// MED      : Median Absolute Deviation
 enum TStatXY{ MEAN_X = NB_STAT_TYPE_EX, MEAN_Y, INTERCEPT, SLOPE, COVARIANCE, CORRELATION, BIAS, MAE, RMSE, RSS, COEF_D, COEF_C, STAT_R², NB_STATXY_TYPE };
 //INTERCEPT_THEIL_SEN: Intercep of of Theil-sen computation
 //SLOPE_THEIL_SEN: Slope of Theil-sen computation

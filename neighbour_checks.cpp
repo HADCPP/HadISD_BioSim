@@ -13,7 +13,7 @@ namespace NEIGHBOUR_CHECKS
 	void get_distances_angles(CStation& station, const std::vector<CStation>& station_info, ivector& distances, ivector& angles)
 	{
 		//Return two big symmetrical arrays of the station separations and bearings
-		
+
 		pair<float, float> coord1 = make_pair(station.getLat(), station.getLon());
 		int st = 0;
 		for (CStation stat : station_info)
@@ -31,58 +31,60 @@ namespace NEIGHBOUR_CHECKS
 				angles(st) = 0;
 				st++;
 			}
-		} 
+		}
 
-		
+
 	}
 
-	void get_all_neighbours(int station_loc,float st_elev, ivector& distances, ivector& bearings, fvector& elevations, ivector& neighbours, ivector& neighbour_quadrants, float sep_limit, float elev_limit, int max_neighbours)
+	void get_all_neighbours(int station_loc, float st_elev, ivector& distances, ivector& bearings, fvector& elevations, varraysize& neighbours, varraysize& neighbour_quadrants, float sep_limit, float elev_limit, int max_neighbours)
 	{
 		varrayInt quadrants(float(0), bearings.size());
 		int a = 0;
 		for (int angle : {270, 180, 90, 0})
 		{
 			varraysize locs = npwhereAnd(bearings, angle, angle + 90, ">=", "<");
-			
+
 			quadrants[locs] = a + 1;
 		}
 		// start by sorting by distance
 		varraysize ordering = arg_sort(bearings);
-		
-		ivector neighbour_locations;
-		
+
+		std::vector<size_t> neighbour_locations;
+		std::vector<size_t> neighbour_quad;
 
 		for (int index : ordering)
 		{
 			//if within range of distance and elevation
 			if (index == station_loc) continue;
-			int i = 0;
+
 			if (distances[index] <= sep_limit)
 			{
 				if (std::abs(elevations[index] - st_elev) <= elev_limit)
 
 				{
-					neighbour_locations[i] = index;
-					neighbour_quadrants[i] = quadrants[index];
-					i++;
+					neighbour_locations.push_back(index);
+					neighbour_quad.push_back(index);
+
 				}
 			}
 		}
 		int stop;
 		(neighbour_locations.size() <= max_neighbours) ? stop = neighbour_locations.size() : stop = max_neighbours;
+		valarray<size_t> dummy(neighbour_locations.size());
 
-		vector_range<ivector> vr(neighbour_locations, boost::numeric::ublas::range(0, stop));
-		neighbours = vr;
-		vector_range<ivector> vr1(neighbour_quadrants, boost::numeric::ublas::range(0, stop));
-		neighbour_quadrants = vr1;
+		std::copy(neighbour_locations.begin(), neighbour_locations.end(), std::begin(dummy));
+		neighbours = dummy[std::slice(0, stop, 1)];
+		dummy.resize(neighbour_quad.size());
+		std::copy(neighbour_quad.begin(), neighbour_quad.end(), std::begin(dummy));
+		neighbour_quadrants = dummy[std::slice(0, stop, 1)];
 	}
-	
+
 	//Format the time series to get allow for sensible correlations
 	CMaskedArray<float> hourly_daily_anomalies(CMaskedArray<float>& timeseries, int obs_per_day)
 	{
 		std::vector<CMaskedArray<float>> time_series = C_reshape(timeseries, 24);
 
-		varrayfloat _daily_mean( time_series.size());
+		varrayfloat _daily_mean(time_series.size());
 		varrayfloat not_mask_count(time_series.size());
 		for (int i = 0; i < _daily_mean.size(); i++)
 		{
@@ -91,7 +93,7 @@ namespace NEIGHBOUR_CHECKS
 			not_mask_count[i] = time_series[i].compressed().size();
 		}
 		//completeness check - only for correlations
-		CMaskedArray<float> daily_mean = ma_masked_where(not_mask_count, "<", float(obs_per_day), _daily_mean,false);
+		CMaskedArray<float> daily_mean = ma_masked_where(not_mask_count, "<", float(obs_per_day), _daily_mean, false);
 		daily_mean.masked(INTMDI, true);
 
 		std::vector<CMaskedArray<float>> hourly_anomalies; //removed annual cycle
@@ -117,13 +119,13 @@ namespace NEIGHBOUR_CHECKS
 
 		for (int i = 0; i < _anomalies.size(); i++)
 		{
-			_anomalies[i] = _anomalies[i]- hourly_mean;
+			_anomalies[i] = _anomalies[i] - hourly_mean;
 		}
 
 		return Shape(_anomalies);
 	}
 
-	
+
 	//Pearson product-moment correlation coefficients
 
 	float corrcoef(CMaskedArray<float>& X, CMaskedArray<float>& Y)
@@ -131,7 +133,7 @@ namespace NEIGHBOUR_CHECKS
 		float Xmean = X.ma_mean();
 		float Ymean = Y.ma_mean();
 
-		float Xt, Yt, Sxx=0, Syy=0, Sxy=0;
+		float Xt, Yt, Sxx = 0, Syy = 0, Sxy = 0;
 
 		for (int i = 0; i < X.size(); i++)
 		{
@@ -153,8 +155,8 @@ namespace NEIGHBOUR_CHECKS
 	/*From the list of nearby stations select the ones which will be good neighours for the test.
 	Select on basis of correlation, overlap of data points and bearing (quadrants)
 	*/
-	vector<size_t>  select_neighbours(CStation& station, string variable, const std::vector<CStation>& station_info, ivector neighbours,
-		ivector neighbour_distances, ivector neighbour_quadrants, boost::gregorian::date start, boost::gregorian::date  end, std::ofstream& logfile)
+	std::vector<size_t>  select_neighbours(CStation& station, string variable, const std::vector<CStation>& station_info, varraysize& neighbours,
+		ivector& neighbour_distances, varraysize& neighbour_quadrants, boost::gregorian::date start, boost::gregorian::date  end, std::ofstream& logfile)
 	{
 
 		//set up storage arrays
@@ -175,7 +177,7 @@ namespace NEIGHBOUR_CHECKS
 		{
 			CStation neigh = station_info[nn_loc];
 			/////////////////////////////////////////Lire les données de la station neigh   /////////////////////////////////////////////////////////////////////
-			test internal_tests2;
+
 
 			if (!DATA_READING::readData(neigh, start, end)) continue;
 
@@ -190,7 +192,7 @@ namespace NEIGHBOUR_CHECKS
 			{
 				std::cout << e.what() << endl;
 			}
-			INTERNAL_CHECKS::internal_checks(neigh, internal_tests2, start, end, logfile);
+			//INTERNAL_CHECKS::internal_checks(neigh, internal_tests2, start, end, logfile);
 
 			valarray<bool> dummy = create_fulltimes(neigh, { variable }, start, end, { "" });
 
@@ -210,7 +212,7 @@ namespace NEIGHBOUR_CHECKS
 				n_overlaps[nn] = overlap;
 				combined_score[nn] = correlation + overlap;
 				n_quadrants[nn] = neighbour_quadrants[nn_loc];
-				
+
 			}
 			nn++;
 			dummy.free();
@@ -226,7 +228,7 @@ namespace NEIGHBOUR_CHECKS
 		valarray<size_t> locs3 = locs[quadrants == 3];
 		valarray<size_t> locs4 = locs[quadrants == 4];
 
-		vector<size_t> final_locs;
+		std::vector<size_t> final_locs;
 
 		if (locs1.size() > 2)
 		{
@@ -238,7 +240,7 @@ namespace NEIGHBOUR_CHECKS
 		if (locs2.size() > 2)
 		{
 			final_locs.push_back(locs2[0]);
-				final_locs.push_back(locs2[1]);
+			final_locs.push_back(locs2[1]);
 		}
 		else if (locs2.size() == 2) final_locs.push_back(locs2[0]);
 		if (locs3.size() > 2)
@@ -256,7 +258,7 @@ namespace NEIGHBOUR_CHECKS
 
 		//and add the rest in order of combined score
 
-		for(int index : locs)
+		for (int index : locs)
 		{
 			if (!(std::find(final_locs.begin(), final_locs.end(), index) != final_locs.end()))
 			{
@@ -264,16 +266,16 @@ namespace NEIGHBOUR_CHECKS
 			}
 			if (final_locs.size() == N_NEIGHBOURS) break;
 		}
-		
+
 		return final_locs;
 	}
-	
-	void detect(CStation& station, CStation&  neighbour, string  variable, varrayfloat flags, varrayfloat neighbour_count, boost::gregorian::date start, end, int distance = 0)
+
+	void detect(CStation& station, CStation&  neighbour, string  variable, varrayfloat& flags, varrayfloat& neighbour_count, boost::gregorian::date start, boost::gregorian::date end, int distance)
 	{
-		map<const char*, vector<int>> FILTERING_FLAG_COL = { {"temperatures",{0,1,4,5,8,12,16,20,27,41,44,58}},
-		{"dewpoints" ,{[0,2,4,6,8,9,13,17,21,28,30,31,32,42,45,59}},
-		{"slp" , {0,3,4,7,11,15,19,23,29,43,46,60}},
-		{"windspeeds" ,{ [0,4,10,14,18,22,56,62,63,64}} };
+		std::map<const char*, std::vector<int>> FILTERING_FLAG_COL = { { "temperatures", { 0, 1, 4, 5, 8, 12, 16, 20, 27, 41, 44, 58 } },
+		{ "dewpoints", { 0, 2, 4, 6, 8, 9, 13, 17, 21, 28, 30, 31, 32, 42, 45, 59 } },
+		{ "slp", { 0, 3, 4, 7, 11, 15, 19, 23, 29, 43, 46, 60 } },
+		{ "windspeeds", { 0, 4, 10, 14, 18, 22, 56, 62, 63, 64 } } };
 
 		CMetVar st_var = station.getMetvar(variable);
 		CMetVar neigh_var = neighbour.getMetvar(variable);
@@ -284,51 +286,58 @@ namespace NEIGHBOUR_CHECKS
 		for (int i = 0; i < total_flags.size(); i++)
 		{
 			float sum = 0;
-			for (int line : FILTERING_FLAG_COL[variable])
+			for (int line : FILTERING_FLAG_COL[variable.c_str()])
 			{
-				sum += station.getQc_flags[line][i];
+				sum += station.getQc_flags()[line][i];
 			}
 			total_flags[i] = sum;
 		}
-		CMaskedArray<float> st_filtered = ma_masked_where<float, float>(total_flags	, float(1),st_var.getData(), float(INTMDI));
-		CMaskedArray<float> neigh_filtered = ma_masked_where<float, float>(total_flags, float(1), neigh_var.getData(), float(INTMDI));
-	
+		CMaskedArray<float> st_filtered = ma_masked_where(total_flags, float(1), st_var.getData(), float(INTMDI));
+
+		CMaskedArray<float> neigh_filtered = ma_masked_where(total_flags, float(1), neigh_var.getData(), float(INTMDI));
+
 		//match the observation times
 
-		varraysize match = npwhereAnd(st_filtered.m_data, "!", float(INTMDI), neigh_filtered.m_data,"!", float(INTMDI));
-		
-		vector<pair<int, int>> month_starts_in_pairs(start, end);
+		varraysize match = npwhereAnd(st_filtered.m_data, "!", float(INTMDI), neigh_filtered.m_data, "!", float(INTMDI));
+
+		std::vector<pair<int, int>> month_ranges = month_starts_in_pairs(start, end);
 		std::vector<std::valarray<pair<int, int>>> month_ranges_years = L_reshape3(month_ranges, 12);
 
-		
+
 		if (match.size() >= 100)
 		{
-			neighour_count[match] += 1;
-			
+			for (size_t i : match)
+			{
+				neighbour_count[i] += 1;
+			}
+
 			CMaskedArray<float> differences(INTMDI, st_filtered.size());
 			differences.m_mask = true;
+
 			varrayfloat dummy = st_filtered.m_data[match];
 			differences.m_data[match] = dummy;
-			dummy= neigh_filtered.m_data[match];
+			dummy = neigh_filtered.m_data[match];
 			differences.m_data[match] -= dummy;
 			differences.m_mask[match] = false;
 
 			varrayfloat all_iqrs(float(0), differences.size());
 
 			//get monthly IQR values
-
+			float iqr;
 			for (int month = 0; month < 12; month++)
 			{
-				float iqr;
 
-				vector<int> year_ids;
+
+				std::vector<int> year_ids;
 				varrayInt datacount(month_ranges.size());
-				vector<CMaskedArray<float>> this_month;
-				datacount = concatenate_months(month_ranges_years[month], differences, this_month, year_ids, mdi, true);
+				std::vector<CMaskedArray<float>> this_month;
+				datacount = concatenate_months(month_ranges_years[month], differences, this_month, year_ids, float(INTMDI), true);
 				year_ids.clear();
 				datacount.free();
+
 				dummy = CompressedMatrice(this_month);
-				if (dummy.size()> 4)
+
+				if (dummy.size() > 4)
 				{
 					iqr = IQR(dummy);
 					if (iqr <= 2) iqr = 2;
@@ -337,14 +346,186 @@ namespace NEIGHBOUR_CHECKS
 				//and copy back into the array
 				for (pair<int, int> year : month_ranges_years[month])
 				{
-					all_iqr[std::slice(year.first, year.second - year.first, 1)] = iqr;
+					all_iqrs[std::slice(year.first, year.second - year.first, 1)] = iqr;
 				}
-				
-			}
 
+			}
+			std::vector<size_t> dubious_vec;
+			for (int i = 0; i < differences.size(); i++)
+			{
+				if (std::abs(differences[i])> 5 * all_iqrs[i] && differences.m_mask[i] == false)
+				{
+					dubious_vec.push_back(i);
+				}
+			}
+			if (dubious_vec.size() >= 1)
+			{
+				varraysize dubious(dubious_vec.size());
+				std::copy(dubious_vec.begin(), dubious_vec.end(), std::begin(dubious));
+
+				if (variable == "slp")
+				{
+					//check if they are storms
+
+					varraysize positive = ma_masked_where(differences, ">", 5 * iqr);
+					varraysize negative = ma_masked_where(differences, "<", -5 * iqr);
+
+					//if majority negative (2/3) and separation > 100
+
+					if ((distance > 100.) && (float(positive.size() / dubious.size()) < 0.333))
+					{
+						if (positive.size() > 0)
+						{
+							for (int i : positive)
+							{
+								flags[i] += 1;
+							}
+						}
+						if (negative.size() > 0)
+						{
+							for (int i : match)
+							{
+								neighbour_count[i] -= 1;
+							}
+						}
+						else
+						{
+							for (int i : dubious)
+							{
+								flags[i] += 1;
+							}
+						}
+					}
+				}
+				else
+				{
+					for (int i : dubious)
+					{
+						flags[i] += 1;
+					}
+				}
+			}
 		}
 	}
 
+	varraysize unflagging_locs(varrayfloat& differences, varrayfloat& flags, varrayfloat& neigh_count, varrayfloat dpd_count , float flag_value)
+	{
+		
+		std::vector<size_t> unset_locs_vec;
+
+		for (int i = 0; i < neigh_count.size(); i++)
+		{
+			if (neigh_count[i] >= 3)
+			{
+				if (flags[i] == flag_value)
+				{
+					if (dpd_count.size() > 0)
+					{
+						if ((dpd_count[i] / neigh_count[i]) >= (2 / 3))
+						{
+							unset_locs_vec.push_back(i);
+						}
+					}
+					else
+					{
+						if (differences[i] <= 4.5)
+						{
+							unset_locs_vec.push_back(i);
+						}
+					}
+				}
+			}
+
+		}
+		
+		varraysize unset_locs(unset_locs_vec.size());
+		std::copy(unset_locs_vec.begin(), unset_locs_vec.end(), std::begin(unset_locs));
+
+		return unset_locs;
+
+
+	}
+	void do_unflagging(CStation& station, std::string variable, std::vector<CMaskedArray<float>>& all_data, 
+		varrayfloat& reporting_accuracies, varrayfloat&  neigh_count, varrayfloat& dpd_flags, boost::gregorian::date start, std::ofstream& logfile ) 
+	{
+		//unflagging using neighbours
+		varrayfloat mean_of_neighbours(float(0),all_data[0].size());
+
+		for (int j = 0; j < mean_of_neighbours.size(); j++)
+		{
+			WBSF::CStatisticEx med;
+			for(int i = 0; i < all_data.size(); i++)
+			{
+				if (all_data[i].m_mask[j] == false)  med += all_data[i].m_data[j];
+			}
+			mean_of_neighbours[j] = med[WBSF::MEDIAN];
+		}
+
+		varrayfloat std_of_neighbours(float(0),all_data[0].size());
+
+		for (int j = 0; j < std_of_neighbours.size(); j++)
+		{
+			WBSF::CStatisticEx mad;
+			for (int i = 0; i < all_data.size(); i++)
+			{
+				if (all_data[i].m_mask[j] == false)  mad += all_data[i].m_data[j];
+			}
+			std_of_neighbours[j] = mad[WBSF::MED];
+		}
+
+		// find where the spread of neighbour observations is less than 1/2
+		// of maximum reporting accuracy
+
+		std_of_neighbours[std_of_neighbours < float(0.5*reporting_accuracies.max())] = float(0.5*reporting_accuracies.max());
+
+		//create series of normalised differences of obs from neighbour mean
+
+		CMetVar st_var = station.getMetvar(variable);
+
+		varrayfloat normalised_differences(float(0), st_var.getData().size());
+
+		for (int i = 0; i < normalised_differences.size(); i++)
+		{
+
+			
+			if (st_var.getAllData().m_mask[i] == false && std_of_neighbours[i]!=0)
+			{
+				normalised_differences = std::abs(st_var.getData()[i] - mean_of_neighbours[i]) / std_of_neighbours[i];
+			}
+		}
+		varraysize unset_locs;
+		for (string qc_test : {"climatological", "gap", "odd"})
+		{
+			if (qc_test == "gap" && variable != "slp")
+			{
+				// only unflag gap check on slp observations
+				continue;
+			}
+			else
+			{
+				varrayfloat flags = station.getQc_flags(UNFLAG_COL_DICT[qc_test.c_str()][variable.c_str()]);
+				if (qc_test == "gap" || qc_test == "climatological")
+				{
+					//only tentative flags
+
+					unset_locs = unflagging_locs(normalised_differences, flags, neigh_count, {}, 2.0F);
+				}
+				else
+					unset_locs = unflagging_locs(normalised_differences, flags, neigh_count, {});
+			}
+			if (unset_locs.size() > 0)
+			{
+				station.setQc_flags(0.F, unset_locs, UNFLAG_COL_DICT[qc_test.c_str()][variable.c_str()]);
+
+				//need to unflag attribute if and only if no other flags are set
+
+				//varrayfloat subset_flags = station.getQc_flags(FLAG_COL_DICT[variable.c_str()]);
+
+
+
+			}
+		}
+	}
 	void neighbour_checks(CStation& station, const std::vector<CStation>& station_info, boost::gregorian::date start, boost::gregorian::date  end, std::ofstream&  logfile)
 	{
 		//calculate distances and angles 
@@ -365,8 +546,9 @@ namespace NEIGHBOUR_CHECKS
 		for (int i = 0; i < station_info.size();i++)
 		{
 			if (station_info[i] == station) station_loc = i;
-				neighbour_elevations(i) = station_info[i].getElev();
-				neighbour_ids(i) = station_info[i].getId();
+
+			neighbour_elevations(i) = station_info[i].getElev();
+			neighbour_ids(i) = station_info[i].getId();
 		}
 
 		//process each neighbour
@@ -375,21 +557,25 @@ namespace NEIGHBOUR_CHECKS
 
 		logfile << "Neighbour Check  \n" ;
 
+		valarray<bool> match_to_compress = create_fulltimes(station, process_var, start, end, carry_thru_vars);
+
+
 		//return all neighbours up to a limit from the distance and elevation offsets (500km and 300m respectively)
 
-		ivector neighbours, neighbour_quadrants;
+		varraysize neighbours;
+		varraysize neighbour_quadrants;
 
 		get_all_neighbours(station_loc,station.getElev(), distances, angles, neighbour_elevations, neighbours, neighbour_quadrants,500,300,20);
 
 		if (neighbours.size() == 0)
 		{
-			logfile << " No neighbour found for the station \n    " << station.getName();
+			logfile << " No neighbour found for the station \n " << station.getName();
 			exit(1);
 		}
 		logfile << " Neighbours \n  "  ;
 		for (int n : neighbours)
 		{
-			logfile << "| " << neighbour_ids[n] << "  ----   ";
+			logfile << " | " << neighbour_ids[n] << "  ----   ";
 		}
 		//if sufficient neighbours
 		if (neighbours.size() > 3)
@@ -400,44 +586,103 @@ namespace NEIGHBOUR_CHECKS
 			{
 				string variable = iflag->first;
 				int col = iflag->second;
+
 				CMetVar st_var = station.getMetvar(variable);
 
 				logfile << "Length of  " << variable << "  record:  " << st_var.getAllData().compressed().size(); 
 
 				if (st_var.getAllData().compressed().size() > 0)
 				{
+					std::vector<size_t> final_neighbours = select_neighbours(station,variable, station_info, neighbours,
+						distances, neighbour_quadrants, start, end, logfile);
 
-					vector<size_t> final_neighbours = select_neighbours(station,variable, station_info, neighbours,
-						neighbour_distances, neighbour_quadrants, start, end, logfile));
 					//now read in final set of neighbours and process
-					varrayfloat neigh_flags(float(0), st_var.getAlldata().size());// count up how many neighbours think this obs is bad
-					varrayfloat neigh_count = (float(0), st_var.getAlldata().size()); //number of neighbours at each time stamp
-					varrayfloat	dpd_flags = (float(0), st_var.getAlldata().size()); // number of neighbours at each time stamp
-					varrayfloat	reporting_accuracies = (float(0), st_var.getAlldata().size()); // reporting accuracy of each neighbour
+
+					varrayfloat neigh_flags(float(0), st_var.getAllData().size());// count up how many neighbours think this obs is bad
+
+					varrayfloat neigh_count(float(0), st_var.getAllData().size()); //number of neighbours at each time stamp
+
+					varrayfloat	dpd_flags(float(0), st_var.getAllData().size()); // number of neighbours at each time stamp
+
+					varrayfloat	reporting_accuracies(float(0), neighbours.size()); // reporting accuracy of each neighbour
 				
-					vector<CMaskedArray<float>> all_data;
+					std::vector<CMaskedArray<float>> all_data;
+
 					int nn = 0;
-					varrayfloat reporting_accuracies(final_neighbours.size());
+					
 					for (int nn_loc : final_neighbours)
 					{
 						CStation neigh = station_info[nn_loc];
-						varraysize dummy= create_fulltimes(neigh, { variable }, start, end, { "" },false,true,true);
-						//lecture des données de neigh
-						all_data[nn] = apply_filter_flags(neigh.getMetvar(variable));
 
-						//detect
-						reporting_accuracies[nn] = reporting_accuracies(neigh.getMetvar(variable).getAllData());
+						bool b = DATA_READING::readData(neigh, start, end);
+
+						test internal_tests2;
+
+						INTERNAL_CHECKS::internal_checks(neigh, internal_tests2, start, end, logfile);
+						
+						valarray<bool> dummy= create_fulltimes(neigh, { variable }, start, end, {""},false,true,true);
+						//lecture des données de neigh
+						all_data.push_back(apply_filter_flags(neigh.getMetvar(variable)));
+
+						detect(station, neigh, variable, neigh_flags, neigh_count, start, end, distances[nn_loc]);
+
+						reporting_accuracies[nn] = reporting_accuracy(neigh.getMetvar(variable).getAllData());
+
+						dpd_flags += neigh.getQc_flags(31);
+						nn++;
 					}
 					//gone through all neighbours
 					//if at least 2 / 3 of neighbours have flagged this point(and at least 3 neighbours)
 
-					varraysize some_flags = npwhere(neigh_flags, ">", 0);
-					varraysize outlier_locs;//= npwhereAnd(neigh_count[some_flags],">=",float(3),)
+					varraysize some_flags = npwhere(neigh_flags, ">", float(0));
 
-					///flag where < 3 neighbours
+					std::vector<size_t> outlier_locs_vec;
+					std::vector<size_t> locs_vec;
 
-					varraysize locs = npwhere(neigh_count[some_flags], "<", 3);
-					//station.qc_flags[some_flags[locs], col] = -1
+					for (size_t i : some_flags)
+					{
+						if ((neigh_count[i] >= 3) && ((neigh_count[i] / neigh_flags[i]) > 0.67))
+						{
+							outlier_locs_vec.push_back(i);
+						}
+						if (neigh_count[i] < 3)
+						{
+							locs_vec.push_back(i);
+						}
+					}
+
+					//flag where < 3 neighbours
+					if (locs_vec.size()>0)
+					{
+						varraysize locs(locs_vec.size());
+
+						std::copy(locs_vec.begin(), locs_vec.end(), std::begin(locs));
+
+						station.setQc_flags(float(1), some_flags[locs], col);
+					}
+
+					if (outlier_locs_vec.size() >= 1)
+					{
+						varraysize outlier_locs(outlier_locs_vec.size());
+
+						std::copy(outlier_locs_vec.begin(), outlier_locs_vec.end(), std::begin(outlier_locs));
+
+					
+						station.setQc_flags(float(1),some_flags[outlier_locs],col );
+
+						print_flagged_obs_number(logfile, "Neighbour", variable, outlier_locs.size());
+
+						CMetVar& st_var = station.getMetvar(variable);
+						st_var.setFlags(some_flags[outlier_locs], 1);
+					}
+
+					else print_flagged_obs_number(logfile, "Neighbour", variable, 0);
+
+					//unflagging using neighbours
+
+
+
+					
 
 				}
 			}

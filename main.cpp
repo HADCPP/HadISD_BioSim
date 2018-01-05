@@ -34,6 +34,7 @@ int main(int arg, char * argv)
 	DATA_READING::read_station_metadata(file, station_info);  // utils.cpp
 
 	bool second = false;
+	bool neighbour_checks = true;
 
 	test internal_tests;
 
@@ -90,7 +91,7 @@ int main(int arg, char * argv)
 			INTERNAL_CHECKS::internal_checks(station, internal_tests, DATESTART, DATEEND, logfile);
 
 			///////////////// TEST EXTERNE ////////////////////////////////////////////////////////////////
-			NEIGHBOUR_CHECKS::neighbour_checks(station, station_info, DATESTART, DATEEND, logfile);
+			if(neighbour_checks) NEIGHBOUR_CHECKS::neighbour_checks(station, station_info, DATESTART, DATEEND, logfile);
 		}
 
 

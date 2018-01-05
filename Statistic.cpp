@@ -242,6 +242,15 @@ namespace WBSF
 
 				value /= m_values.size();
 			}
+			if (type == MED)
+			{
+				value = 0;
+				double median = CStatistic::operator[](MEDIAN);
+				for (int i = 0; i < (int)m_values.size(); i++)
+					value += fabs(m_values[i] - median);
+
+				value /= m_values.size();
+			}
 			else if (type == SKEWNESS)
 			{
 				value = 0;

@@ -162,16 +162,16 @@ public:
 
 protected:
 
-	std::string m_id;
-	std::string m_name;
-	std::string m_wmoid;
-	double m_lat;
-	double m_lon;
-	double m_elev;
-	std::valarray<varrayfloat> m_qc_flags;
-	std::map<std::string, CMetVar >  m_Met_var;
-	s_time m_time;
-	std::string m_history;
+		std::string m_id;
+		std::string m_name;
+		std::string m_wmoid;
+		double m_lat;
+		double m_lon;
+		double m_elev;
+		std::valarray<varrayfloat> m_qc_flags;
+		std::map<std::string, CMetVar >  m_Met_var;
+		s_time m_time;
+		std::string m_history;
 };
 
 bool operator==(CStation const& a, CStation const& b);

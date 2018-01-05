@@ -393,8 +393,6 @@ namespace PYTHON_FUNCTION
 		}
 		return vec;
 	}
-
-
 	/*template<typename T>
 	inline vind_matrice np_where(matrice& v1, T value, const std::string condition)
 	{
@@ -497,7 +495,6 @@ namespace PYTHON_FUNCTION
 		std::copy(index.begin(), index.end(), std::begin(vec));
 		return vec;
 	}
-	
 	template<typename T>
 	inline std::valarray<std::pair<std::size_t,std::size_t>> np_ma_where(std::valarray<CMaskedArray<T>>& v1, const std::string condition, T value)
 	{
@@ -574,8 +571,6 @@ namespace PYTHON_FUNCTION
 
 
 	}
-
-
 	template<typename T>
 	inline std::valarray<std::size_t> npwhere(const std::valarray<T>& v1, const std::string condition,T value )
 	{
@@ -1640,7 +1635,6 @@ namespace PYTHON_FUNCTION
 		val = val1;
 	}
 
-
 	// recuperer l'indice du minimum de l'array (seule la première occurence est retournée)
 	inline int np_argmin(const varrayfloat& val)
 	{
@@ -2116,24 +2110,9 @@ namespace PYTHON_FUNCTION
 	}
 
 	template <typename T>
-	std::valarray<std::size_t> arg_sort(const boost::numeric::ublas::vector<T> & v)
+	std::valarray<size_t> arg_sort(const boost::numeric::ublas::vector<T> & v)
 	{
-		std::vector<std::size_t> indices(v.size());
-		std::iota(indices.begin(), indices.end(), 0u);
-		std::sort(indices.begin(), indices.end(), [&](int lhs, int rhs) {
-			return v[lhs] < v[rhs];
-		});
-		varraysize res(v.size());
-		for (std::size_t i = 0; i <indices.size(); i++) 
-		{
-			res[indices[i]] = i;
-		}
-		return res;
-	}
-	template <typename T>
-	std::valarray<std::size_t> arg_sort(const valarray<T> & v)
-	{
-		std::valarray<std::size_t> indices(v.size());
+		std::valarray<size_t> indices(v.size());
 		std::iota(std::begin(indices), std::end(indices), 0u);
 		std::sort(std::begin(indices), std::end(indices), [&](int lhs, int rhs) {
 			return v[lhs] < v[rhs];
@@ -2141,10 +2120,23 @@ namespace PYTHON_FUNCTION
 
 		return indices;
 	}
+	
 	template <typename T>
-	std::valarray<std::size_t> arg_dsort(const valarray<T> & v)
+	std::valarray<size_t> arg_sort(const std::valarray<T>& v)
 	{
-		std::valarray<std::size_t> indices(v.size());
+		std::valarray<size_t> indices(v.size());
+		std::iota(std::begin(indices), std::end(indices), 0u);
+		std::sort(std::begin(indices), std::end(indices), [&](int lhs, int rhs) {
+			return v[lhs] < v[rhs];
+		});
+
+		return indices;
+	}
+
+	template<typename T>
+	std::valarray<size_t> arg_dsort(std::valarray<T>& v)
+	{
+		std::valarray<size_t> indices(v.size());
 		std::iota(std::begin(indices), std::end(indices), 0u);
 		std::sort(std::begin(indices), std::end(indices), [&](int lhs, int rhs) {
 			return v[lhs] > v[rhs];
