@@ -27,13 +27,13 @@
 namespace
 {
 	std::map<const char*, int> FLAG_OUTLIER_DICT = { { "temperatures", 41 }, { "dewpoints", 42 }, { "slp", 43 } };
+
+	const int N_NEIGHBOURS = 10;
 }
 
 
 namespace NEIGHBOUR_CHECKS
 {
-
-
 	void get_distances_angles(CStation station, const std::vector<CStation>& station_info,
 		boost::numeric::ublas::matrix<float>& distances, boost::numeric::ublas::matrix<float>& angles);
 	/*
@@ -65,10 +65,18 @@ namespace NEIGHBOUR_CHECKS
 
 		:returns: anomalies - timeseries with removed annual and diurnal cycles.
 	*/
-	CMaskedArray<float> hourly_daily_anomalies(CMaskedArray<float> timeseries, int obs_per_day = 6);
+	CMaskedArray<float> hourly_daily_anomalies(CMaskedArray<float>& timeseries, int obs_per_day = 6);
+	float corrcoef(CMaskedArray<float>& X, CMaskedArray<float>& Y);
 
-	void  select_neighbours(CStation station, std::string variable, const std::vector<CStation>& station_info, ivector neighbours,
+	/* 
+	From the list of nearby stations select the ones which will be good neighours for the test.
+    Select on basis of correlation, overlap of data points and bearing (quadrants)
+	*/
+	void  select_neighbours(CStation& station, std::string variable, const std::vector<CStation>& station_info, ivector neighbours,
 		ivector neighbour_distances, ivector neighbour_quadrants, boost::gregorian::date start, boost::gregorian::date  end, std::ofstream& logfile);
+	
+	/*Detect which observations are outliers*/
+	void detect(CStation& station, ivector  neighbour, std::string  variable, varrayfloat flags, varrayfloat neighbour_count, boost::gregorian::date start, end, int distance = 0)è
 
 	void neighbour_checks(CStation& station, const std::vector<CStation>& station_info, boost::gregorian::date start, boost::gregorian::date  end, std::ofstream&  logfile);
 }

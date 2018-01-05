@@ -1028,58 +1028,82 @@ namespace PYTHON_FUNCTION
 		if (condition1 == "=")
 		{
 			if (condition2 == "=")
+			{
 				for (size_t i = 0; i < v1.size(); i++)
 				{
-					if (v1[i] == value && v2[i]== value2) index.push_back(i);
+					if (v1[i] == value && v2[i] == value2) index.push_back(i);
 				}
+			}
+		}
+		if (condition1 == "!")
+		{
+			if (condition2 == "!")
+			{
+				for (size_t i = 0; i < v1.size(); i++)
+				{
+					if (v1[i] != value && v2[i] != value2) index.push_back(i);
+				}
+			}
 		}
 		if (condition1 == "=")
 		{
 			if (condition2 == "!")
+			{
 				for (size_t i = 0; i < v1.size(); i++)
 				{
 					if (v1[i] == value && v2[i] != value2) index.push_back(i);
 				}
+			}
 		}
 		if (condition1 == "<=")
 		{
 			if (condition2 == ">")
+			{
 				for (size_t i = 0; i < v1.size(); i++)
 				{
-					if (v1[i] <= value && v2[i]> value2) index.push_back(i);
+					if (v1[i] <= value && v2[i] > value2) index.push_back(i);
 				}
+			}
 		}
 		if (condition1 == "<")
 		{
 			if (condition2 == ">")
+			{
 				for (size_t i = 0; i < v1.size(); i++)
 				{
 					if (v1[i] < value && v2[i]> value2) index.push_back(i);
 				}
+			}
 		}
 		if (condition1 == "<")
 		{
 			if (condition2 == ">=")
+			{
 				for (size_t i = 0; i < v1.size(); i++)
 				{
 					if (v1[i] < value && v2[i] >= value2) index.push_back(i);
 				}
+			}
 		}
 		if (condition1 == "<")
 		{
 			if (condition2 == "!")
+			{
 				for (size_t i = 0; i < v1.size(); i++)
 				{
 					if (v1[i] < value && v2[i] != value2) index.push_back(i);
 				}
+			}
 		}
 		if (condition1 == "<=")
 		{
 			if (condition2 == ">=")
+			{
 				for (size_t i = 0; i < v1.size(); i++)
 				{
 					if (v1[i] < value && v2[i] >= value2) index.push_back(i);
 				}
+			}
 		}
 		std::valarray<std::size_t> vec(index.size());
 		std::copy(index.begin(), index.end(), std::begin(vec));
@@ -1101,6 +1125,7 @@ namespace PYTHON_FUNCTION
 				}
 
 		}
+
 		if (condition1 == "<=")
 		{
 			if (condition2 == ">")
@@ -2104,5 +2129,27 @@ namespace PYTHON_FUNCTION
 			res[indices[i]] = i;
 		}
 		return res;
+	}
+	template <typename T>
+	std::valarray<std::size_t> arg_sort(const valarray<T> & v)
+	{
+		std::valarray<std::size_t> indices(v.size());
+		std::iota(std::begin(indices), std::end(indices), 0u);
+		std::sort(std::begin(indices), std::end(indices), [&](int lhs, int rhs) {
+			return v[lhs] < v[rhs];
+		});
+
+		return indices;
+	}
+	template <typename T>
+	std::valarray<std::size_t> arg_dsort(const valarray<T> & v)
+	{
+		std::valarray<std::size_t> indices(v.size());
+		std::iota(std::begin(indices), std::end(indices), 0u);
+		std::sort(std::begin(indices), std::end(indices), [&](int lhs, int rhs) {
+			return v[lhs] > v[rhs];
+		});
+
+		return indices;
 	}
 }
