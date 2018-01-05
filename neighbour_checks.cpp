@@ -10,7 +10,7 @@ using namespace PYTHON_FUNCTION;
 
 namespace NEIGHBOUR_CHECKS
 {
-	void get_distances_angles(CStation station, const std::vector<CStation>& station_info, ivector& distances, ivector& angles)
+	void get_distances_angles(CStation& station, const std::vector<CStation>& station_info, ivector& distances, ivector& angles)
 	{
 		//Return two big symmetrical arrays of the station separations and bearings
 		
@@ -78,7 +78,7 @@ namespace NEIGHBOUR_CHECKS
 	}
 	
 	//Format the time series to get allow for sensible correlations
-	CMaskedArray<float> hourly_daily_anomalies(CMaskedArray<float> timeseries, int obs_per_day)
+	CMaskedArray<float> hourly_daily_anomalies(CMaskedArray<float>& timeseries, int obs_per_day)
 	{
 		std::vector<CMaskedArray<float>> time_series = C_reshape(timeseries, 24);
 
@@ -123,301 +123,10 @@ namespace NEIGHBOUR_CHECKS
 		return Shape(_anomalies);
 	}
 
-	bool readNeighbourData(const string fichier, boost::gregorian::date DATESTART, boost::gregorian::date  DATEEND, CStation& station)
-	{
-		string namefile = station.getId();
-
-		//duree entre DATASTART et DATAEND
-		date end = DATEEND + years(1);
-		boost::gregorian::date_duration DaysBetween = end - DATESTART;
-		int HoursBetween = int(DaysBetween.days()) * 24;
-		std::vector<int> TimeStamps;
-		PYTHON_FUNCTION::linspace<int>(TimeStamps, 0, HoursBetween - 1, HoursBetween);
-		std::vector<int> ValidYears;
-		PYTHON_FUNCTION::linspace<int>(ValidYears, int(DATESTART.year()), int(DATEEND.year()), int(DATEEND.year() - DATESTART.year() + 1));
-		string dubiousfile = LOG_OUTFILE_LOCS + "dubious_data_files.txt";
-		boost::gregorian::date  dbg_sttime = boost::gregorian::day_clock::local_day();
-
-		//Création et initialisation des tableaux où mettre les variables meteo
-
-		std::valarray<float> temperatures(INTMDI, HoursBetween);
-		std::valarray<int> temperature_flags(INTMDI, HoursBetween);
-		std::valarray<float> dewpoints(INTMDI, HoursBetween);
-		std::valarray<int> dewpoint_flags(INTMDI, HoursBetween);
-		std::valarray<float> windspeeds(INTMDI, HoursBetween);
-		std::valarray<int> windspeeds_flags(INTMDI, HoursBetween);
-		std::valarray<float> humidity(INTMDI, HoursBetween);
-		std::valarray<int> humiditys_flags(INTMDI, HoursBetween);
-		std::valarray<float> winddirs(INTMDI, HoursBetween);
-		std::valarray<int> winddirs_flags(INTMDI, HoursBetween);
-		std::valarray<float>  slp(INTMDI, HoursBetween);
-		std::valarray<int> slp_flags(INTMDI, HoursBetween);
-		std::valarray<float> precip(INTMDI, HoursBetween);
-		std::valarray<int> precip_flags(INTMDI, HoursBetween);
-
-
-		//if extra : Ajouter des variables meteo supplémentaires
-
-		boost::gregorian::date  dbg_lasttime = boost::gregorian::day_clock::local_day();
-
-		//ouvrir le fichier csv qui contient des données
-		int  last_obs_time = 0;
-		ifstream input;
-		stringstream sst;
-		sst << fichier;
-		string chaine = sst.str();
-
-		boost::filesystem::exists(chaine.c_str());
-		try
-		{
-			input.open(chaine.c_str());
-		}
-		catch (std::exception e)
-		{
-			std::cout << e.what() << endl;
-		}
-		if (!input) return true;
-		string ligne = "";
-		string token;
-		char  delimiter = ',';
-		map<string, int> Headings;
-		// Lecture de l'entête du fichier et récupération des entêtes des principales variables (si elles existent)
-		// Indices des variables;
-		int temp, dew, hum, windS, windD, pres, precipitation;
-		getline(input, ligne);
-		char_separator<char> sep(",");
-		tokenizer<char_separator<char>> tokens(ligne, sep);
-		int i = 0;
-		for (tokenizer<char_separator<char>>::const_iterator t = tokens.begin(); t != tokens.end(); t++)
-		{
-			Headings[t->c_str()] = i++;
-		}
-		bool sortie = false;
-		
-			
-			if (Headings["Tair"])  temp = Headings["Tair"];
-			if (Headings["Tdew"])  dew = Headings["Tdew"];
-			if (Headings["Pres"])  pres = Headings["Pres"];
-			if (Headings["WndS"])  windS = Headings["WndS"];
-			if (Headings["WndD"])  windD = Headings["WndD"];
-			if (Headings["Prcp"])  precipitation = Headings["Prcp"];
-			if (Headings["RelH"])  hum = Headings["RelH"];
-			
-
-		
-
-		while (!input.eof())
-		{
-			getline(input, ligne);
-			istringstream iss(ligne);
-			string year, month, day;
-			int hour;
-			if (ligne == "") break;
-
-			std::vector<string> data;
-
-			while (getline(iss, token, delimiter))
-			{
-				data.push_back(token.c_str());
-			}
-			year = data[0];
-
-			// tester si la date de l'observation appartient à l'intervalle d'années désiré
-			int annee = std::stoi(year);
-
-			if (!(std::find(ValidYears.begin(), ValidYears.end(), annee) != ValidYears.end())) continue;
-
-			month = (data[1].size() == 1) ? "0" + data[1] : data[1];
-			day = (data[2].size() == 1) ? "0" + data[2] : data[2];
-			hour = atoi(data[3].c_str());
-			boost::gregorian::date  dt_time;    // Date au format  aaaammdd
-			try
-			{
-				dt_time = boost::gregorian::date_from_iso_string(year + month + day);
-			}
-			catch (boost::gregorian::bad_day_of_month)
-			{
-				std::cout << "error with boost::gregorian";
-			}
-			//duree entre DATESTART et la date de l'observation
-
-			boost::gregorian::date_duration obs_date = dt_time - DATESTART;
-
-			int  obs_time = obs_date.days() * 24 + hour;
-
-			int time_loc = obs_time;
-			//test if this time_loc out of bounds:
-
-			if (time_loc != HoursBetween)
-			{
-				(Headings["Tair"]) ? temperatures[time_loc] = atof(data[temp].c_str()) : temperatures[time_loc] = -999;
-				temperature_flags[time_loc] = INTMDI;
-				(Headings["Tdew"]) ? dewpoints[time_loc] = atof(data[dew].c_str()) : dewpoints[time_loc] = -999;
-				dewpoint_flags[time_loc] = INTMDI;
-				(Headings["RelH"]) ? humidity[time_loc] = atof(data[hum].c_str()) : humidity[time_loc] = -999;
-				humiditys_flags[time_loc] = INTMDI;
-				(Headings["WndS"]) ? windspeeds[time_loc] = atof(data[windS].c_str()) : windspeeds[time_loc] = -999;
-				windspeeds_flags[time_loc] = INTMDI;
-				(Headings["WndD"]) ? winddirs[time_loc] = atof(data[windD].c_str()) : winddirs[time_loc] = -999;
-				winddirs_flags[time_loc] = INTMDI;
-				(Headings["Pres"]) ? slp[time_loc] = atof(data[pres].c_str()) : slp[time_loc] = -999;
-				slp_flags[time_loc] = INTMDI;
-				(Headings["Prcp"]) ? precip[time_loc] = atof(data[precipitation].c_str()) : precip[time_loc] = -999;
-				precip_flags[time_loc] = INTMDI;
-			}
-		}
-
-
-		std::vector<string> full_var_list = process_var;
-		if (carry_thru_vars.size() != 0)
-		{
-			copy(carry_thru_vars.begin(), carry_thru_vars.end(), std::back_inserter(full_var_list));
-		}
-		full_var_list.push_back("time");
-
-		for (string variable : full_var_list)
-		{
-			varrayfloat dummy(HoursBetween);
-			// temperature  min et max
-			if (variable == "temperatures")
-			{
-				dummy = temperatures[temperatures != float(INTMDI)];
-				float max_temp;
-				(Headings["Tair"]) ? max_temp = dummy.max() : max_temp = -999;
-				float min_temp;
-				(Headings["Tair"]) ? min_temp = dummy.min() : min_temp = -999;
-
-				CMetVar this_var(variable, "Dry bulb air temperature at screen height (~2m)");
-				this_var.setMdi(INTMDI);
-				this_var.setUnits("degree_Celsius");
-				this_var.setValidMin(min_temp);
-				this_var.setValidMax(max_temp);
-				this_var.setCoordinates("latitude longitude elevation");
-				this_var.setStandard_name("surface_temperature");
-				this_var.setFdi(-2.e30);
-
-				this_var.setData(temperatures);
-
-				//Ajouter la variable méteo à la liste des variables de la station stat
-				station.setMetVar(this_var, variable);
-			}
-			if (variable == "dewpoints")
-			{
-				dummy = dewpoints[dewpoints != float(INTMDI)];
-				float max_dew;
-				(Headings["Tdew"]) ? max_dew = dummy.max() : max_dew = -999;
-				float min_dew;
-				(Headings["Tdew"]) ? min_dew = dummy.min() : min_dew = -999;
-
-				CMetVar this_var(variable, "Dew point temperature at screen height (~2m)");
-				this_var.setMdi(INTMDI);
-				this_var.setUnits("degree_Celsius");
-				this_var.setCellmethods("latitude: longitude: time: point (nearest to reporting hour)");
-				this_var.setValidMin(min_dew);
-				this_var.setValidMax(max_dew);
-				this_var.setCoordinates("latitude longitude elevation");
-				this_var.setStandard_name("dew_point_temperature");
-				this_var.setFdi(-2.e30);
-
-				this_var.setData(dewpoints);
-
-				//Ajouter la variable méteo à la liste des variables de la station stat
-				station.setMetVar(this_var, variable);
-			}
-			if (variable == "windspeeds")
-			{
-				dummy = windspeeds[windspeeds != float(INTMDI)];
-				float max_ws;
-				(Headings["WndS"]) ? max_ws = dummy.max() : max_ws = -999;
-				float min_ws;
-				(Headings["WndS"]) ? min_ws = dummy.min() : min_ws = -999;
-
-				CMetVar this_var(variable, "Wind speed at mast height (~10m)");
-				this_var.setMdi(INTMDI);
-				this_var.setUnits("meters per second");
-				this_var.setCellmethods("latitude: longitude: time: point (nearest to reporting hour)");
-				this_var.setValidMin(min_ws);
-				this_var.setValidMax(max_ws);
-				this_var.setCoordinates("latitude longitude elevation");
-				this_var.setStandard_name("wind_speed");
-				this_var.setFdi(-2.e30);
-
-				this_var.setData(windspeeds);
-
-				//Ajouter la variable méteo à la liste des variables de la station stat
-				station.setMetVar(this_var, variable);
-			}
-			if (variable == "winddirs")
-			{
-
-				CMetVar this_var(variable, "Wind Direction at mast height (~10m)");
-				this_var.setMdi(INTMDI);
-				this_var.setUnits("degree");
-				this_var.setCellmethods("latitude: longitude: time: point (nearest to reporting hour)");
-				this_var.setValidMin(0);
-				this_var.setValidMax(360);
-				this_var.setCoordinates("latitude longitude elevation");
-				this_var.setStandard_name("wind_from_direction");
-				this_var.setFdi(-2.e30);
-
-				this_var.setData(winddirs);
-
-				//Ajouter la variable méteo à la liste des variables de la station stat
-				station.setMetVar(this_var, variable);
-			}
-
-			if (variable == "slp")
-			{
-				dummy = slp[slp != float(INTMDI)];
-				float smax;
-				float smin;
-				(Headings["pres"]) ? smax = dummy.max() : smax = -999;
-				(Headings["pres"]) ? smin = dummy.min() : smin = -999;
-
-				CMetVar this_var(variable, "Reported Sea Level Pressure at screen height (~2m)");
-				this_var.setMdi(INTMDI);
-				this_var.setUnits("hPa");
-				this_var.setCellmethods("latitude: longitude: time: point (nearest to reporting hour)");
-				this_var.setValidMin(smin);
-				this_var.setValidMax(smax);
-				this_var.setCoordinates("latitude longitude elevation");
-				this_var.setStandard_name("air_pressure_at_sea_level");
-				this_var.setFdi(-2.e30);
-
-				this_var.setData(slp);
-
-				//Ajouter la variable méteo à la liste des variables de la station stat
-				station.setMetVar(this_var, variable);
-			}
-			if (variable == "time")
-			{
-				CMetVar this_var(variable, "time_of_measurement");
-				
-				this_var.setValidMin(0);
-				this_var.setStandard_name("time");
-
-				dummy.resize(HoursBetween);
-				std::iota(std::begin(dummy), std::end(dummy), 0);
-
-				this_var.setData(dummy);
-
-				//Ajouter la variable méteo à la liste des variables de la station stat
-				station.setMetVar(this_var, variable);
-
-			}
-		}
-
-		std::cout << " Reading data to netcdf file" << endl;
-
-		std::cout << "Done station " << station.getName() << endl;
-		std::cout << boost::gregorian::day_clock::local_day() - dbg_sttime << " s" << endl;
-		std::cout << boost::gregorian::day_clock::local_day() << endl;
-
-		return sortie;
-	}
+	
 	//Pearson product-moment correlation coefficients
 
-	float corrcoef(CMaskedArray<float> X, CMaskedArray<float> Y)
+	float corrcoef(CMaskedArray<float>& X, CMaskedArray<float>& Y)
 	{
 		float Xmean = X.ma_mean();
 		float Ymean = Y.ma_mean();
@@ -444,14 +153,14 @@ namespace NEIGHBOUR_CHECKS
 	/*From the list of nearby stations select the ones which will be good neighours for the test.
 	Select on basis of correlation, overlap of data points and bearing (quadrants)
 	*/
-	void  select_neighbours(CStation station, string variable, const std::vector<CStation>& station_info, ivector neighbours,
+	vector<size_t>  select_neighbours(CStation& station, string variable, const std::vector<CStation>& station_info, ivector neighbours,
 		ivector neighbour_distances, ivector neighbour_quadrants, boost::gregorian::date start, boost::gregorian::date  end, std::ofstream& logfile)
 	{
 
 		//set up storage arrays
 		varrayfloat n_correlations(float(0), neighbours.size());
 		varrayfloat	n_distances(float(0), neighbours.size());
-		varrayfloat	n_quadrants(float(0), neighbours.size());
+		varrayInt	n_quadrants(float(0), neighbours.size());
 		varrayfloat	n_overlaps(float(0), neighbours.size());
 		varrayfloat	combined_score(float(0), neighbours.size());
 
@@ -469,21 +178,21 @@ namespace NEIGHBOUR_CHECKS
 			test internal_tests2;
 
 			if (!DATA_READING::readData(neigh, start, end)) continue;
-						
+
 			//////////////////////////////////////////////////////////////  FIN LECTURE DATA ///////////////////////////////////////////////////
 
 			///////Internal test  for neigh/////////////////////
 			ofstream logfile;
 			stringstream sst;
 			sst << LOG_OUTFILE_LOCS << (neigh).getId() << ".neighbour";
-			try{ logfile.open(sst.str().c_str()); }
+			try { logfile.open(sst.str().c_str()); }
 			catch (std::exception e)
 			{
 				std::cout << e.what() << endl;
 			}
 			INTERNAL_CHECKS::internal_checks(neigh, internal_tests2, start, end, logfile);
-			
-			valarray<bool> dummy = create_fulltimes(neigh, {variable }, start, end, { "" });
+
+			valarray<bool> dummy = create_fulltimes(neigh, { variable }, start, end, { "" });
 
 			//get the correlations of data to this neighbour
 
@@ -501,18 +210,141 @@ namespace NEIGHBOUR_CHECKS
 				n_overlaps[nn] = overlap;
 				combined_score[nn] = correlation + overlap;
 				n_quadrants[nn] = neighbour_quadrants[nn_loc];
+				
 			}
-
+			nn++;
 			dummy.free();
 			neigh_anomalies.free();
+		}
+		varraysize sort_order = arg_dsort(combined_score);
 
+		// sort out the quadrants
+		valarray<size_t> locs = neighbours[sort_order];
+		valarray<int> quadrants = n_quadrants[sort_order];
+		valarray<size_t> locs1 = locs[quadrants == 1];
+		valarray<size_t> locs2 = locs[quadrants == 2];
+		valarray<size_t> locs3 = locs[quadrants == 3];
+		valarray<size_t> locs4 = locs[quadrants == 4];
 
+		vector<size_t> final_locs;
 
+		if (locs1.size() > 2)
+		{
+			final_locs.push_back(locs1[0]);
+			final_locs.push_back(locs1[1]);
+		}
+		else if (locs1.size() == 1) final_locs.push_back(locs1[0]);
 
+		if (locs2.size() > 2)
+		{
+			final_locs.push_back(locs2[0]);
+				final_locs.push_back(locs2[1]);
+		}
+		else if (locs2.size() == 2) final_locs.push_back(locs2[0]);
+		if (locs3.size() > 2)
+		{
+			final_locs.push_back(locs3[0]);
+			final_locs.push_back(locs3[1]);
+		}
+		else if (locs3.size() == 3) final_locs.push_back(locs3[0]);
+		if (locs4.size() > 2)
+		{
+			final_locs.push_back(locs4[0]);
+			final_locs.push_back(locs4[1]);
+		}
+		else if (locs4.size() == 1) final_locs.push_back(locs4[0]);
+
+		//and add the rest in order of combined score
+
+		for(int index : locs)
+		{
+			if (!(std::find(final_locs.begin(), final_locs.end(), index) != final_locs.end()))
+			{
+				final_locs.push_back(index);
+			}
+			if (final_locs.size() == N_NEIGHBOURS) break;
+		}
+		
+		return final_locs;
+	}
+	
+	void detect(CStation& station, CStation&  neighbour, string  variable, varrayfloat flags, varrayfloat neighbour_count, boost::gregorian::date start, end, int distance = 0)
+	{
+		map<const char*, vector<int>> FILTERING_FLAG_COL = { {"temperatures",{0,1,4,5,8,12,16,20,27,41,44,58}},
+		{"dewpoints" ,{[0,2,4,6,8,9,13,17,21,28,30,31,32,42,45,59}},
+		{"slp" , {0,3,4,7,11,15,19,23,29,43,46,60}},
+		{"windspeeds" ,{ [0,4,10,14,18,22,56,62,63,64}} };
+
+		CMetVar st_var = station.getMetvar(variable);
+		CMetVar neigh_var = neighbour.getMetvar(variable);
+
+		//filter by flags - not all (no Climatological [24,25], or Odd cluster [54,55,56,57]), T record check not in D, 
+
+		valarray<float> total_flags(st_var.getAllData().size());
+		for (int i = 0; i < total_flags.size(); i++)
+		{
+			float sum = 0;
+			for (int line : FILTERING_FLAG_COL[variable])
+			{
+				sum += station.getQc_flags[line][i];
+			}
+			total_flags[i] = sum;
+		}
+		CMaskedArray<float> st_filtered = ma_masked_where<float, float>(total_flags	, float(1),st_var.getData(), float(INTMDI));
+		CMaskedArray<float> neigh_filtered = ma_masked_where<float, float>(total_flags, float(1), neigh_var.getData(), float(INTMDI));
+	
+		//match the observation times
+
+		varraysize match = npwhereAnd(st_filtered.m_data, "!", float(INTMDI), neigh_filtered.m_data,"!", float(INTMDI));
+		
+		vector<pair<int, int>> month_starts_in_pairs(start, end);
+		std::vector<std::valarray<pair<int, int>>> month_ranges_years = L_reshape3(month_ranges, 12);
+
+		
+		if (match.size() >= 100)
+		{
+			neighour_count[match] += 1;
+			
+			CMaskedArray<float> differences(INTMDI, st_filtered.size());
+			differences.m_mask = true;
+			varrayfloat dummy = st_filtered.m_data[match];
+			differences.m_data[match] = dummy;
+			dummy= neigh_filtered.m_data[match];
+			differences.m_data[match] -= dummy;
+			differences.m_mask[match] = false;
+
+			varrayfloat all_iqrs(float(0), differences.size());
+
+			//get monthly IQR values
+
+			for (int month = 0; month < 12; month++)
+			{
+				float iqr;
+
+				vector<int> year_ids;
+				varrayInt datacount(month_ranges.size());
+				vector<CMaskedArray<float>> this_month;
+				datacount = concatenate_months(month_ranges_years[month], differences, this_month, year_ids, mdi, true);
+				year_ids.clear();
+				datacount.free();
+				dummy = CompressedMatrice(this_month);
+				if (dummy.size()> 4)
+				{
+					iqr = IQR(dummy);
+					if (iqr <= 2) iqr = 2;
+					else iqr = 2;
+				}
+				//and copy back into the array
+				for (pair<int, int> year : month_ranges_years[month])
+				{
+					all_iqr[std::slice(year.first, year.second - year.first, 1)] = iqr;
+				}
+				
+			}
 
 		}
 	}
-	
+
 	void neighbour_checks(CStation& station, const std::vector<CStation>& station_info, boost::gregorian::date start, boost::gregorian::date  end, std::ofstream&  logfile)
 	{
 		//calculate distances and angles 
@@ -538,8 +370,6 @@ namespace NEIGHBOUR_CHECKS
 		}
 
 		//process each neighbour
-
-		
 		
 		cout << " Neighbour Check for station  " << station.getName() << endl;
 
@@ -576,6 +406,38 @@ namespace NEIGHBOUR_CHECKS
 
 				if (st_var.getAllData().compressed().size() > 0)
 				{
+
+					vector<size_t> final_neighbours = select_neighbours(station,variable, station_info, neighbours,
+						neighbour_distances, neighbour_quadrants, start, end, logfile));
+					//now read in final set of neighbours and process
+					varrayfloat neigh_flags(float(0), st_var.getAlldata().size());// count up how many neighbours think this obs is bad
+					varrayfloat neigh_count = (float(0), st_var.getAlldata().size()); //number of neighbours at each time stamp
+					varrayfloat	dpd_flags = (float(0), st_var.getAlldata().size()); // number of neighbours at each time stamp
+					varrayfloat	reporting_accuracies = (float(0), st_var.getAlldata().size()); // reporting accuracy of each neighbour
+				
+					vector<CMaskedArray<float>> all_data;
+					int nn = 0;
+					varrayfloat reporting_accuracies(final_neighbours.size());
+					for (int nn_loc : final_neighbours)
+					{
+						CStation neigh = station_info[nn_loc];
+						varraysize dummy= create_fulltimes(neigh, { variable }, start, end, { "" },false,true,true);
+						//lecture des données de neigh
+						all_data[nn] = apply_filter_flags(neigh.getMetvar(variable));
+
+						//detect
+						reporting_accuracies[nn] = reporting_accuracies(neigh.getMetvar(variable).getAllData());
+					}
+					//gone through all neighbours
+					//if at least 2 / 3 of neighbours have flagged this point(and at least 3 neighbours)
+
+					varraysize some_flags = npwhere(neigh_flags, ">", 0);
+					varraysize outlier_locs;//= npwhereAnd(neigh_count[some_flags],">=",float(3),)
+
+					///flag where < 3 neighbours
+
+					varraysize locs = npwhere(neigh_count[some_flags], "<", 3);
+					//station.qc_flags[some_flags[locs], col] = -1
 
 				}
 			}
