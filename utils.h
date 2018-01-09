@@ -604,8 +604,9 @@ namespace DATA_READING
 	de la classe CStation
 	*/
 	void read_station_metadata(const std::string file, std::vector<CStation>& station_info);
-	bool readData(CStation& station, boost::gregorian::date  DATESTART, boost::gregorian::date  DATEEND);
-
+	std::string find_CSV_file(const CStation& station);
+	bool readData(CStation& station, boost::gregorian::date  DATESTART, boost::gregorian::date  DATEEND, test& internal_test);
+	void writeCSV(CStation& station, boost::gregorian::date  DATESTART, boost::gregorian::date DATEEND);
 
 
 }

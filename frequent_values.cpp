@@ -32,7 +32,6 @@ namespace INTERNAL_CHECKS
 				month.push_back(make_pair(month_it.first, month_it.second));
 				iteration = 2;
 			}
-
 		}
 		month_ranges_years.push_back(month);
 	
@@ -51,7 +50,7 @@ namespace INTERNAL_CHECKS
 				if (season == 0)
 				{
 					//all year
-					season_data = PYTHON_FUNCTION::ma_masked_values<float>(filtered_data.compressed(), st_var.getFdi());
+					season_data = PYTHON_FUNCTION::ma_masked_values(filtered_data.compressed(), st_var.getFdi());
 					thresholds[0] = 30;
 					thresholds[1] = 20;
 					thresholds[2] = 10;
@@ -348,8 +347,8 @@ namespace INTERNAL_CHECKS
 							station.setQc_flags(year_flags, indices3, flag_col[v]);
 						else if (season == 4)
 						{
-							station.setQc_flags(year_flags[indices40], indices40, flag_col[v]);
-							station.setQc_flags(year_flags[std::slice(indices40.size()-1,indices41.size(),1)], indices41, flag_col[v]);
+							station.setQc_flags(year_flags[std::slice(0, indices40.size(), 1)], indices40, flag_col[v]);
+							station.setQc_flags(year_flags[std::slice(indices40.size(),indices41.size(),1)], indices41, flag_col[v]);
 						}
 					}
 					

@@ -40,6 +40,7 @@ namespace INTERNAL_CHECKS
 
 			varraysize good = npwhere(all_filtered.m_mask, "=", false);
 
+			if (good.size() == 0) break; // Les données de la variable sont absentes des données. 
 			CMaskedArray<float> full_time_diffs(0, all_filtered.size());
 
 			full_time_diffs.m_mask = all_filtered.m_mask;

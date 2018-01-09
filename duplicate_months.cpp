@@ -89,7 +89,7 @@ namespace INTERNAL_CHECKS
 		int flag_col, boost::gregorian::date start, boost::gregorian::date end, ofstream& logfile)
 	{
 		const  int MIN_DATA_REQUIRED = 20;
-		//get array of MAP<INT,INT> start / end pairs
+		
 		std::vector<pair<int, int>> month_ranges;
 		month_ranges = UTILS::month_starts_in_pairs(start, end);
 		

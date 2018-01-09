@@ -265,7 +265,7 @@ namespace INTERNAL_CHECKS
 						}
 
 					}
-					
+					Compress = CompressedMatrice(normed_anomalies);
 					//low pass filter
 					coc_low_pass_filter(normed_anomalies, year_ids, monthly_vqvs, int(month_ranges_years[0].size()));
 					varrayfloat bins, bincenters;

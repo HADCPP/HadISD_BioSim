@@ -196,9 +196,9 @@ namespace INTERNAL_CHECKS
 		hcc_sss(temperatures.getData(), dewpoints.getData(), month_ranges,logfile,flags);
 		station.setQc_flags(flags, flag_col[0]);
 
-		//Dew point depression
+		//Dew point depression   Variables non disponibles pour effectuer ce test.
 		
-		CMetVar& precip = station.getMetvar("precip1_depth");
+	/*	CMetVar& precip = station.getMetvar("precip1_depth");
 		CMetVar& cloudbase = station.getMetvar("cloud_base");
 		CMetVar& past_sigwx = station.getMetvar("past_sigwx1");
 		
@@ -206,7 +206,7 @@ namespace INTERNAL_CHECKS
 		
 		flags.resize(temperatures.getAllData().size());
 		flags = hcc_dpd(times, temperatures.getAllData(), dewpoints.getAllData(), precip.getAllData(), cloudbase.getAllData(), past_sigwx.getAllData(), logfile);
-		station.setQc_flags(flags, flag_col[1]);
+		station.setQc_flags(flags, flag_col[1]);*/
 	
 		//Dew point cutoffs
 		flags = hcc_cutoffs(temperatures.getAllData(), dewpoints.getAllData(), month_ranges, logfile);

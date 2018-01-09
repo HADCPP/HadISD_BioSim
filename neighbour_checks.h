@@ -31,11 +31,7 @@ namespace
 
 	const int N_NEIGHBOURS = 10;
 
-	std::map<const char*, varraysize> FLAG_COL_DICT = { { "temperatures", { 0, 1, 4, 5, 8, 12, 16, 20, 24, 27, 41, 44, 54, 58 } },
-	{ "dewpoints", { 0, 2, 4, 6, 8, 9, 13, 17, 21, 25, 28, 30, 31, 32, 42, 45, 55, 59 } },
-	{ "slp", { 0, 3, 4, 7, 11, 15, 19, 23, 26, 29, 43, 46, 57, 60 } },
-	{ "windspeeds", { 0, 4, 10, 14, 18, 22, 47, 56, 61, 62, 63, 64, 65 } },
-	{ "winddirs", { 0, 4, 10, 14, 18, 22, 47, 48, 56, 61, 62, 63, 64, 65, 66, 67, 68 } } };
+	
 	
 	
 	std::map<const char*, std::map<const char*, int> > UNFLAG_COL_DICT = { { "spike", { { "temperatures", 27 }, { "dewpoints", 28 }, { "slp", 29 } } },

@@ -16,6 +16,7 @@ namespace INTERNAL_CHECKS
 		for (string variable : variable_list)
 		{
 			CMetVar& st_var = station.getMetvar(variable);
+			if (st_var.getAllData().m_masked_indices.size() == st_var.getAllData().size()) break; //Aucune donnée de cette variable
 			float mdi = Cast<float>(st_var.getMdi());
 			float reporting_resolution = reporting_accuracy(apply_filter_flags(st_var));
 			int  reporting_freq = reporting_frequency(apply_filter_flags(st_var));
@@ -37,7 +38,7 @@ namespace INTERNAL_CHECKS
 					month_data_count[i] = dummy;
 				}
 
-				month_data_count[month]=concatenate_months(month_ranges_years[v], st_var.getAllData(), this_month, year_ids,mdi, true);
+				month_data_count[month]=concatenate_months(month_ranges_years[month], st_var.getAllData(), this_month, year_ids,mdi, true);
 
 				//winsorize and get hourly climatology 
 				for (size_t h = 0; h < 24; h++)
@@ -156,7 +157,6 @@ namespace INTERNAL_CHECKS
 					for (int y = 0; y < month_ranges_years[0].size(); y++)
 					{
 						
-						
 						if (y == 0)
 						{
 							winds_year = winds.getAllData()(month_ranges_years[month][y].first, month_ranges_years[month][y].second);
@@ -179,6 +179,8 @@ namespace INTERNAL_CHECKS
 					varrayfloat winds_month_compress = CompressedMatrice(winds_month);
 					varrayfloat slp_month_compress = CompressedMatrice(slp_month);
 					
+					if (winds_month_compress.size() == 0 || slp_month_compress.size() == 0) continue;
+
 					 median_wind = idl_median(winds_month_compress);
 					 median_slp = idl_median(slp_month_compress);
 
@@ -188,7 +190,7 @@ namespace INTERNAL_CHECKS
 
 				}
 				//now test to see if variance exceeds expected range
-				for (int y = 0; y < month_ranges_years.size(); y++)
+				for (int y = 0; y < month_ranges_years[0].size(); y++)
 				{
 					if (variances[y] != mdi && iqr_variance != mdi && median_variance != mdi && month_data_count[y][month] >= DATA_COUNT_THRESHOLD)
 					{

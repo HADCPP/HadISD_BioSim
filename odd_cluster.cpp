@@ -123,11 +123,15 @@ namespace INTERNAL_CHECKS
        cluster - updated cluster information
        obs_type - updated observation type
 	*/
-	void occ_after_cluster(COddCluster& cluster, int &obs_type, int time, const varrayfloat& flags)
+	void occ_after_cluster(COddCluster& cluster, int &obs_type, int time, varrayfloat& flags)
 	{
 		if (time - cluster.m_end >= 48)
 		{
 			//isolated cluster with 48hr gap either side
+			for (int i : cluster.m_locations)
+			{
+				flags[i] = 1;
+			}
 			//flags[cluster.locations] = 1
 			//as have had a 48hr gap, start a new cluster
 			cluster.m_last_data = cluster.m_end;
@@ -161,7 +165,6 @@ namespace INTERNAL_CHECKS
 		std::ofstream &logfile, bool second)
 	{
 		
-		
 		int v = 0;
 		for (string variable : variable_list)
 		{
@@ -177,7 +180,7 @@ namespace INTERNAL_CHECKS
 				prev_flag_number = dummy.size();
 			}
 			//using IDL copy as method to ensure reproducibility (initially)
-			COddCluster oc_details = COddCluster::COddCluster(UTILS::Cast<float>(st_var.getMdi()), UTILS::Cast<float>(st_var.getMdi()), 0, UTILS::Cast<float>(st_var.getMdi()), UTILS::Cast<float>(st_var.getMdi()), -1);
+			COddCluster oc_details = COddCluster::COddCluster(st_var.getMdi(), st_var.getMdi(), 0, st_var.getMdi(), st_var.getMdi(), -1);
 			int obs_type = 1;
 			for (int time : station.getMetvar("time").getData())
 			{

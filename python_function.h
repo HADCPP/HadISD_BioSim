@@ -336,11 +336,12 @@ namespace PYTHON_FUNCTION
 	//Returns num evenly spaced samples, calculated over the
 	//interval[start, stop].*/
 	template<typename T>
-	inline void linspace(std::vector<T>& t, int start, int stop, int number)
+	inline void linspace(std::vector<T>& t, int start, int stop, int step)
 	{
 
-		int delta = int((stop - start) / (number - 1));
-		for (int i = 0; i < number; i++)
+		int delta;
+		(stop != start && step != 1) ? delta = int((stop - start) / (step - 1)) : delta = 0;
+		for (int i = 0; i < step; i++)
 			t.push_back(start + i*delta);
 	}
 	

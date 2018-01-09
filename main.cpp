@@ -16,9 +16,10 @@
 #include <vector>
 
 using namespace std;
+using namespace boost::filesystem;
 
+const string DATES[2]={ "20100101", "20110101"};
 
-const string DATES[2]={ "20020101", "20150101"};
 
 
 int main(int arg, char * argv)
@@ -38,23 +39,7 @@ int main(int arg, char * argv)
 
 	test internal_tests;
 
-	////////////////////////////////******  INITIALISATION DES TESTS********************//////////////////////////////////
-
-	internal_tests.climatological = true;
-	internal_tests.diurnal = true;
-	internal_tests.cloud = false;
-	internal_tests.duplicate = true;
-	internal_tests.frequent = false;
-	internal_tests.gap = true;
-	internal_tests.humidity = true;
-	internal_tests.odd = true;
-	internal_tests.records = true;
-	internal_tests.spike = true;
-	internal_tests.streaks = true;
-	internal_tests.variance = true;
-	internal_tests.winds = true;
-
-	///////////////////////////////////////////////////////////////////////////////////////////////
+	
 
 	boost::gregorian::date  DATESTART = boost::gregorian::date_from_iso_string(DATES[0]);
 	boost::gregorian::date  DATEEND = boost::gregorian::date_from_iso_string(DATES[1]);
@@ -62,10 +47,28 @@ int main(int arg, char * argv)
 	cout << boost::gregorian::day_clock::local_day() << endl;  //Date du jour au format Www Mmm dd hh:mm:ss yyyy\n
 
 
-	for (CStation station : station_info)
+	for (CStation& station : station_info)
 	{
+		////////////////////////////////******  INITIALISATION DES TESTS********************//////////////////////////////////
 
-		if(!DATA_READING::readData(station, DATESTART, DATEEND))
+		internal_tests.climatological = false;
+		internal_tests.diurnal = false;
+		internal_tests.cloud = false;
+		internal_tests.duplicate = false;
+		internal_tests.frequent = false;
+		internal_tests.gap = false;
+		internal_tests.humidity = false;
+		internal_tests.odd = false;
+		internal_tests.records = false;
+		internal_tests.spike = false;
+		internal_tests.streaks = false;
+		internal_tests.variance = false;
+		internal_tests.winds = false;
+
+		///////////////////////////////////////////////////////////////////////////////////////////////
+
+		
+		if(!DATA_READING::readData(station, DATESTART, DATEEND,internal_tests))
 		{
 			std::cout << "CSV file not found for station " << station.getName() << endl;
 			continue;
@@ -73,7 +76,7 @@ int main(int arg, char * argv)
 		else
 		{
 			// Ouverture du fichier log en mode ecriture 
-			ofstream logfile;
+			std::ofstream logfile;
 			stringstream sst;
 			sst << LOG_OUTFILE_LOCS << (station).getId() << ".log";
 
@@ -87,15 +90,26 @@ int main(int arg, char * argv)
 			logfile << " Internal Checks " << endl;
 			logfile << " Station Identifier  :  " << (station).getId() << endl;
 
+		
+
 			///////////////// TESTS INTERNES //////////////////////////////////////////////////////////////////
 			INTERNAL_CHECKS::internal_checks(station, internal_tests, DATESTART, DATEEND, logfile);
 
-			///////////////// TEST EXTERNE ////////////////////////////////////////////////////////////////
-			if(neighbour_checks) NEIGHBOUR_CHECKS::neighbour_checks(station, station_info, DATESTART, DATEEND, logfile);
 		}
-
-
 	}	
+	for (CStation& station : station_info)
+	{
+		///////////////// TEST EXTERNE ////////////////////////////////////////////////////////////////
+		std::ofstream logfile;
+		logfile.open(LOG_OUTFILE_LOCS + (station).getId() + ".log", std::ofstream::app);
+
+		if(neighbour_checks) NEIGHBOUR_CHECKS::neighbour_checks(station, station_info, DATESTART, DATEEND, logfile);
+
+		//////////////// SAVE CHANGES ////////////////////////////////////////////////////////////
+
+		DATA_READING::writeCSV(station, DATESTART, DATEEND);
+	}
+	
 	std::system("PAUSE");
 	return 0;
 	

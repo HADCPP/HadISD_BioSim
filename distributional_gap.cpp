@@ -107,9 +107,9 @@ namespace INTERNAL_CHECKS
 		std::vector<pair<int, int>> month_ranges = month_starts_in_pairs(start, end);
 
 		// get monthly averages
-		CMaskedArray<float> month_average(Cast<float>(st_var.getMdi()), month_ranges.size());
+		CMaskedArray<float> month_average(st_var.getMdi(), month_ranges.size());
 
-		CMaskedArray<float> month_average_filtered(Cast<float>(st_var.getMdi()), month_ranges.size());
+		CMaskedArray<float> month_average_filtered(st_var.getMdi(), month_ranges.size());
 
 		CMaskedArray<float>  all_filtered = apply_filter_flags(st_var);
 		int m = 0;
@@ -120,10 +120,10 @@ namespace INTERNAL_CHECKS
 
 			CMaskedArray<float> filtered = all_filtered(month.first, month.second );
 
-			month_average.m_data[m] = dgc_get_monthly_averages(data, OBS_LIMIT, Cast<float>(st_var.getMdi()), MEAN);
+			month_average.m_data[m] = dgc_get_monthly_averages(data, OBS_LIMIT, st_var.getMdi(), MEAN);
 
-			month_average_filtered.m_data[m] = dgc_get_monthly_averages(filtered, OBS_LIMIT, Cast<float>(st_var.getMdi()), MEAN);
-			m += 1;
+			month_average_filtered.m_data[m] = dgc_get_monthly_averages(filtered, OBS_LIMIT, st_var.getMdi(), MEAN);
+			m++;
 		}
 
 		// get overall monthly climatologies - use filtered data
@@ -137,12 +137,12 @@ namespace INTERNAL_CHECKS
 		// Initialisation
 		for (size_t i = 0; i < standardised_months.size(); i++)
 		{
-			varrayfloat dummy(Cast<float>(st_var.getMdi()), 12);
+			varrayfloat dummy(st_var.getMdi(), 12);
 			standardised_months[i]=dummy;
 		}
 		for (size_t m = 0; m < 12; m++)
 		{
-			varraysize valid_filtered = npwhere(list_month_average_filtered[m], "!", Cast<float>(st_var.getMdi()));
+			varraysize valid_filtered = npwhere(list_month_average_filtered[m], "!", st_var.getMdi());
 
 			if (valid_filtered.size() >= VALID_MONTHS)
 			{
@@ -151,7 +151,7 @@ namespace INTERNAL_CHECKS
 				
 				for (size_t i = 0; i < valid_filtered.size(); i++)
 				{
-					valid_data += list_month_average_filtered[valid_filtered[i]][m];
+					valid_data += list_month_average_filtered[valid_filtered[i]][0];
 				}
 				
 				float clim;

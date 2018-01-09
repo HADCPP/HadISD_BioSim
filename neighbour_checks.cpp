@@ -176,23 +176,7 @@ namespace NEIGHBOUR_CHECKS
 		for (int nn_loc : neighbours)
 		{
 			CStation neigh = station_info[nn_loc];
-			/////////////////////////////////////////Lire les données de la station neigh   /////////////////////////////////////////////////////////////////////
-
-
-			if (!DATA_READING::readData(neigh, start, end)) continue;
-
-			//////////////////////////////////////////////////////////////  FIN LECTURE DATA ///////////////////////////////////////////////////
-
-			///////Internal test  for neigh/////////////////////
-			ofstream logfile;
-			stringstream sst;
-			sst << LOG_OUTFILE_LOCS << (neigh).getId() << ".neighbour";
-			try { logfile.open(sst.str().c_str()); }
-			catch (std::exception e)
-			{
-				std::cout << e.what() << endl;
-			}
-			//INTERNAL_CHECKS::internal_checks(neigh, internal_tests2, start, end, logfile);
+			
 
 			valarray<bool> dummy = create_fulltimes(neigh, { variable }, start, end, { "" });
 
@@ -530,10 +514,8 @@ namespace NEIGHBOUR_CHECKS
 	{
 		//calculate distances and angles 
 		
-		
-		ivector distances(station_info.size() - 1);
-		ivector angles(station_info.size() - 1);
-
+		ivector distances(station_info.size());
+		ivector angles(station_info.size());
 
 		cout << " calculating distances and bearings matrix" << endl;
 
@@ -546,7 +528,6 @@ namespace NEIGHBOUR_CHECKS
 		for (int i = 0; i < station_info.size();i++)
 		{
 			if (station_info[i] == station) station_loc = i;
-
 			neighbour_elevations(i) = station_info[i].getElev();
 			neighbour_ids(i) = station_info[i].getId();
 		}
@@ -557,7 +538,7 @@ namespace NEIGHBOUR_CHECKS
 
 		logfile << "Neighbour Check  \n" ;
 
-		valarray<bool> match_to_compress = create_fulltimes(station, process_var, start, end, carry_thru_vars);
+		//valarray<bool> match_to_compress = create_fulltimes(station, process_var, start, end, carry_thru_vars);
 
 
 		//return all neighbours up to a limit from the distance and elevation offsets (500km and 300m respectively)
@@ -578,7 +559,7 @@ namespace NEIGHBOUR_CHECKS
 			logfile << " | " << neighbour_ids[n] << "  ----   ";
 		}
 		//if sufficient neighbours
-		if (neighbours.size() > 3)
+		if (neighbours.size() >= 3)
 		{
 			map<const char*, int>::const_iterator iflag = FLAG_OUTLIER_DICT.cbegin();
 
@@ -587,7 +568,7 @@ namespace NEIGHBOUR_CHECKS
 				string variable = iflag->first;
 				int col = iflag->second;
 
-				CMetVar st_var = station.getMetvar(variable);
+				CMetVar& st_var = station.getMetvar(variable);
 
 				logfile << "Length of  " << variable << "  record:  " << st_var.getAllData().compressed().size(); 
 
@@ -613,12 +594,6 @@ namespace NEIGHBOUR_CHECKS
 					for (int nn_loc : final_neighbours)
 					{
 						CStation neigh = station_info[nn_loc];
-
-						bool b = DATA_READING::readData(neigh, start, end);
-
-						test internal_tests2;
-
-						INTERNAL_CHECKS::internal_checks(neigh, internal_tests2, start, end, logfile);
 						
 						valarray<bool> dummy= create_fulltimes(neigh, { variable }, start, end, {""},false,true,true);
 						//lecture des données de neigh
