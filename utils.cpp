@@ -206,7 +206,7 @@ namespace UTILS
 	}
 	 void print_flagged_obs_number(std::ofstream& logfile, string test, string variable, int nflags)
 	{
-		logfile << test << "     Check Flags  :     " << variable << "    :    " << nflags << endl;
+		logfile << test << "    Check Flags  :     " << variable << "    :    " << nflags << endl;
 	}
 	/*
 	Apply these flags to all variables
@@ -1090,15 +1090,15 @@ namespace DATA_READING
 
 	void writeCSV(CStation& station, boost::gregorian::date  DATESTART, boost::gregorian::date DATEEND)
 	{
-
+		cout << " Writing data ! " << endl;
 		//duree entre DATASTART et DATAEND
-		date end = DATEEND + years(1);
+		date end = DATEEND;
 		boost::gregorian::date_duration DaysBetween = end - DATESTART;
 		int HoursBetween = int(DaysBetween.days()) * 24;
 		std::vector<int> TimeStamps;
 		PYTHON_FUNCTION::linspace<int>(TimeStamps, 0, HoursBetween - 1, HoursBetween);
 		std::vector<int> ValidYears;
-		PYTHON_FUNCTION::linspace<int>(ValidYears, int(DATESTART.year()), int(DATEEND.year()), int(DATEEND.year() - DATESTART.year() + 1));
+		PYTHON_FUNCTION::linspace<int>(ValidYears, int(DATESTART.year()), int(DATEEND.year())-1, int(DATEEND.year() - DATESTART.year()));
 
 		//ouvrir le fichier csv initial en mode lecture qui contient des données
 		string csv_file = DATA_READING::find_CSV_file(station);
@@ -1155,6 +1155,8 @@ namespace DATA_READING
 
 		ligne = ligne + ",Flag";
 		output << ligne << endl;;
+		vector<string> prev_obs{ to_string(DATESTART.year()), "1", "1","0"};
+		int date_iter = 0;
 
 		while (!input.eof())  // parcours du fichier à copier
 		{
@@ -1181,40 +1183,54 @@ namespace DATA_READING
 				output << ligne << endl;
 				continue;
 			}
-
-			month = (data[1].size() == 1) ? "0" + data[1] : data[1];
-			day = (data[2].size() == 1) ? "0" + data[2] : data[2];
-			hour = atoi(data[3].c_str());
-			boost::gregorian::date  dt_time;    // Date au format  aaaammdd
-			try
+			else
 			{
-				dt_time = boost::gregorian::date_from_iso_string(year + month + day);
-			}
-			catch (boost::gregorian::bad_day_of_month)
-			{
-				std::cout << "error with boost::gregorian";
-			}
-			//duree entre DATESTART et la date de l'observation
+				month = (data[1].size() == 1) ? "0" + data[1] : data[1];
+				day = (data[2].size() == 1) ? "0" + data[2] : data[2];
+				hour = atoi(data[3].c_str());
+				vector<string> current_obs{ data[0], data[1], data[2], data[3] };
 
-			boost::gregorian::date_duration obs_date = dt_time - DATESTART;
+				if (prev_obs[0] == current_obs[0] && prev_obs[1] == current_obs[1] && prev_obs[2] == current_obs[2] && prev_obs[3] == current_obs[3])
+				{
+					current_obs = prev_obs;
+				}
 
-			int  obs_time = obs_date.days() * 24 + hour;  // indice de l'observation dans le vecteur des flags associé à la station
+				boost::gregorian::date  dt_time;    // Date au format  aaaammdd
+				try
+				{
+					dt_time = boost::gregorian::date_from_iso_string(year + month + day);
+				}
+				catch (boost::gregorian::bad_day_of_month)
+				{
+					std::cout << "error with boost::gregorian";
+				}
+				//duree entre DATESTART et la date de l'observation
 
-			int time_loc = obs_time;
-			//test if this time_loc out of bounds:
-			
-			if (time_loc != HoursBetween)
-			{
+				boost::gregorian::date_duration obs_date = dt_time - DATESTART;
+
+				int  obs_time = obs_date.days() * 24 + hour;  // indice de l'observation dans le vecteur des flags associé à la station
+				if (obs_time != date_iter)
+				{
+					for (int i = 0; i < Headings.size(); i++)
+					{
+
+					}
+				}
+
+				int time_loc = obs_time;
+
+
 				bool flag_libelle = false;
 
 				// Eliminer l'observation qui a été flaggée.
 				if (Headings.find("Tair") != Headings.end())
 				{
-					for (int ligne : FLAG_COL_DICT["temperatures"])
+
+					for (int line : { 0, 1, 4, 5, 8, 12, 16, 20, 24, 27, 41, 44, 54, 58 })
 					{
 						flag_libelle = false;
 
-						if (station.getQc_flags()[ligne][time_loc] != 0)
+						if (station.getQc_flags()[line][time_loc] != 0)
 						{
 							data[Headings["Tair"]] = "-999";
 							if (flag_libelle == false)
@@ -1227,11 +1243,13 @@ namespace DATA_READING
 				}
 				if (Headings.find("Tdew") != Headings.end())
 				{
-					for (int ligne : FLAG_COL_DICT["dewpoints"])
+
+					for (int line : { 0, 2, 4, 6, 8, 9, 13, 17, 21, 25, 28, 30, 31, 32, 42, 45, 55, 59 })
 					{
+
 						flag_libelle = false;
 
-						if (station.getQc_flags()[ligne][time_loc] != 0)
+						if (station.getQc_flags()[line][time_loc] != 0)
 						{
 							data[Headings["Tdew"]] = "-999";
 							if (flag_libelle == false)
@@ -1244,11 +1262,11 @@ namespace DATA_READING
 				}
 				if (Headings.find("WndS") != Headings.end())
 				{
-					for (int ligne : FLAG_COL_DICT["windspeeds"])
+					for (int line : { 0, 4, 10, 14, 18, 22, 47, 56, 61, 62, 63, 64, 65 })
 					{
 						flag_libelle = false;
 
-						if (station.getQc_flags()[ligne][time_loc] != 0)
+						if (station.getQc_flags()[line][time_loc] != 0)
 						{
 							data[Headings["WndS"]] = "-999";
 							if (flag_libelle == false)
@@ -1261,11 +1279,11 @@ namespace DATA_READING
 				}
 				if (Headings.find("Pres") != Headings.end())
 				{
-					for (int ligne : FLAG_COL_DICT["slp"])
+					for (int line : { 0, 3, 4, 7, 11, 15, 19, 23, 26, 29, 43, 46, 57, 60 })
 					{
 						flag_libelle = false;
 
-						if (station.getQc_flags()[ligne][time_loc] != 0)
+						if (station.getQc_flags()[line][time_loc] != 0)
 						{
 							data[Headings["Pres"]] = "-999";
 							if (flag_libelle == false)
@@ -1278,11 +1296,11 @@ namespace DATA_READING
 				}
 				if (Headings.find("WndD") != Headings.end())
 				{
-					for (int ligne : FLAG_COL_DICT["winddirs"])
+					for (int line : { 0, 4, 10, 14, 18, 22, 47, 48, 56, 61, 62, 63, 64, 65, 66, 67, 68 })
 					{
 						flag_libelle = false;
 
-						if (station.getQc_flags()[ligne][time_loc] != 0)
+						if (station.getQc_flags()[line][time_loc] != 0)
 						{
 							data[Headings["WndD"]] = "-999";
 							if (flag_libelle == false)
@@ -1294,9 +1312,9 @@ namespace DATA_READING
 					}
 				}
 
-                ///////////////////////////////////  Copier la ligne dans le nouveau fichier       ////////////////
+				///////////////////////////////////  Copier la ligne dans le nouveau fichier       ////////////////
 				ligne = "";
-				for (int i = 0; i < data.size()-1; i++)
+				for (int i = 0; i < data.size() - 1; i++)
 				{
 					ligne += data[i] + ",";
 				}
@@ -1304,8 +1322,8 @@ namespace DATA_READING
 
 				output << ligne << endl;
 			}
-
 		}
+
 		output.close();
 	}
 }

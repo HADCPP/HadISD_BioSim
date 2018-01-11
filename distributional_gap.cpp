@@ -128,8 +128,8 @@ namespace INTERNAL_CHECKS
 
 		// get overall monthly climatologies - use filtered data
 
-		std::vector<std::valarray<float>> list_month_average = C_reshape(month_average.m_data, 12);
-		std::vector<std::valarray<float>>  list_month_average_filtered = C_reshape(month_average_filtered.m_data, 12);
+		std::vector<std::valarray<float>> list_month_average = L_reshape(month_average.m_data, 12);
+		std::vector<std::valarray<float>>  list_month_average_filtered = L_reshape(month_average_filtered.m_data, 12);
 
 		/***Initialisation de standardised_months*/
 
@@ -151,7 +151,7 @@ namespace INTERNAL_CHECKS
 				
 				for (size_t i = 0; i < valid_filtered.size(); i++)
 				{
-					valid_data += list_month_average_filtered[valid_filtered[i]][0];
+					valid_data += list_month_average_filtered[valid_filtered[i]][m];
 				}
 				
 				float clim;
@@ -302,9 +302,19 @@ namespace INTERNAL_CHECKS
 					y++;
 				}
 				windspeeds_month.masked(st_var_wind.getAllData().m_fill_value);
-				windspeeds_month_average = dgc_get_monthly_averages(windspeeds_month, OBS_LIMIT, Cast<float>(st_var_wind.getMdi()), MEAN);
+				windspeeds_month_average = dgc_get_monthly_averages(windspeeds_month, OBS_LIMIT, st_var_wind.getMdi(), MEAN);
 
-				windspeeds_month_mad = mean_absolute_deviation(windspeeds_month.compressed(),true);
+	
+				WBSF::CStatisticEx med;
+				for (int i = 0; i < windspeeds_month.compressed().size(); i++)
+				{
+						
+						
+						med += windspeeds_month.compressed()[i];
+
+				}
+				(med.size() == 0) ? windspeeds_month_mad = 0 : windspeeds_month_mad = med[WBSF::MED];
+					
 			}
 
 			std::vector<CMaskedArray<float>> this_month_data;

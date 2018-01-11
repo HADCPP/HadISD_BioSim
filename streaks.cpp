@@ -152,7 +152,7 @@ namespace INTERNAL_CHECKS
 				if (threshold < n_obs)  n_obs = int(threshold);
 			}
 		}
-		varrayfloat flags(0., all_filtered.size());
+		varrayfloat flags(0.F, all_filtered.size());
 		//Look for continuous straight strings
 
 		float prev_value = Cast<float>(st_var.getMdi());
@@ -216,6 +216,11 @@ namespace INTERNAL_CHECKS
 	{
 		
 		valarray<varrayfloat> flags(data[0].m_data, data.size());
+		
+		for (varrayfloat& _flag : flags)
+		{
+			_flag = 0.F;
+		}
 		vector<int > ndays;
 		int nday;
 		varrayfloat prev_day(data[0].size());
@@ -239,7 +244,7 @@ namespace INTERNAL_CHECKS
 						{
 							//if above threshold and not because all values are missing, flag
 							for (int i = day - nday; i < day; ++i)
-								flags[i] = 1.;
+								flags[i] = 1.F;
 						}
 					}
 				}

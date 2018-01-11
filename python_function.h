@@ -194,7 +194,7 @@ public:
 	}
 	void masked(T missing_value,bool ma=false)
 	{
-		
+		m_masked_indices.clear();
 		if (!ma)
 		{
 			for (size_t i = 0; i < m_data.size(); ++i)
@@ -304,6 +304,13 @@ public:
 		ma.m_data[m_mask] = m_fill_value;
 		return ma;
 	}	
+	CMaskedArray<T> CMaskedArray<T>::operator-=(T val)
+	{
+		
+		m_data -= val;
+		m_data[m_mask] = m_fill_value;
+		return *this;
+	}
 	CMaskedArray<T> CMaskedArray<T>::operator+=(CMaskedArray<T> const& m1)
 	{
 		CMaskedArray<T> ma;
@@ -1917,29 +1924,40 @@ namespace PYTHON_FUNCTION
 		int compteur = 0;
 		int iteration = 1;
 
-		for (int i = 0; i < data.size(); i += line)
+		if (col == 1)
 		{
-			if (iteration <= col && i < data.size() && compteur<line)
+			for (int val: data)
 			{
-				month[index++] = data[i];
-				iteration++;
-			}
-			else
-			{
-				if (compteur == line) break;
+				month[0] = val;
 				m_data.push_back(month);
-				compteur++;
-				month.resize(col);
-				index = 0;
-				i = m_data.size();
-				month[index++] = data[i];
-				iteration = 2;
 			}
-			if (i + line >= data.size() && compteur<line)
+		}
+		else
+		{
+			for (int i = 0; i < data.size(); i += line)
 			{
-				i = m_data.size();
-			}
+				if (iteration <= col && i < data.size() && compteur < line)
+				{
+					month[index++] = data[i];
+					iteration++;
+				}
+				else
+				{
+					if (compteur == line) break;
+					m_data.push_back(month);
+					compteur++;
+					month.resize(col);
+					index = 0;
+					i = m_data.size();
+					month[index++] = data[i];
+					iteration = 2;
+				}
+				if (i + line >= data.size() && compteur < line)
+				{
+					i = m_data.size();
+				}
 
+			}
 		}
 
 		return m_data;

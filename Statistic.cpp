@@ -245,7 +245,7 @@ namespace WBSF
 			if (type == MED)
 			{
 				value = 0;
-				double median = CStatistic::operator[](MEDIAN);
+				double median = CStatisticEx::operator[](MEDIAN);
 				for (int i = 0; i < (int)m_values.size(); i++)
 					value += fabs(m_values[i] - median);
 

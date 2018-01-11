@@ -129,6 +129,7 @@ public:
 		// Remplir qc_flag correpondant à la variable qui se trouve à la position colonne
 		void setQc_flags(varrayfloat qc_flags,int v){ m_qc_flags[v] = qc_flags; }
 		void setQc_flags(float value, varraysize indices, int index){ m_qc_flags[index][indices] = value; }
+		void setQc_flags(float value, size_t indice, int index){ m_qc_flags[index][indice] = value; }
 		void setQc_flags(varrayfloat valar, varraysize indices, int index){ m_qc_flags[index][indices] = valar; }
 		void setQc_flags(varrayfloat qc_flags, std::slice indices, int index){ m_qc_flags[index][indices] = qc_flags; }
 		void setQc_flags(std::valarray<varrayfloat> qc_flags){ m_qc_flags = qc_flags; }

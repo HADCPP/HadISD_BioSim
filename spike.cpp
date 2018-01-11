@@ -145,9 +145,13 @@ namespace INTERNAL_CHECKS
 						dummy = this_month_filtered_diff.m_data[locs];
 						iqr = IQR(dummy);
 						if (iqr == float(0) && delta == 1)
+						{
 							critical_values(delta - 1, month) = float(6);
+						}
 						else if (iqr == float(0))
+						{
 							critical_values(delta - 1, month) = Cast<float>(st_var.getMdi());
+						}
 						else
 						{
 							critical_values(delta - 1, month) = 6 * iqr;

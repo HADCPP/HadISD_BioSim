@@ -103,7 +103,7 @@ int main(int arg, char * argv)
 		std::ofstream logfile;
 		logfile.open(LOG_OUTFILE_LOCS + (station).getId() + ".log", std::ofstream::app);
 
-		if(neighbour_checks) NEIGHBOUR_CHECKS::neighbour_checks(station, station_info, DATESTART, DATEEND, logfile);
+		//if(neighbour_checks) NEIGHBOUR_CHECKS::neighbour_checks(station, station_info, DATESTART, DATEEND, logfile);
 
 		//////////////// SAVE CHANGES ////////////////////////////////////////////////////////////
 

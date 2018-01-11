@@ -27,7 +27,7 @@ namespace INTERNAL_CHECKS
 			return;
 		}
 		
-		logfile << "Total CStation record size  " << station.getMetvar("time").getData().size() << endl;
+		logfile << "Total station "<<station.getName()<< "  record size  " << station.getMetvar("time").getData().size() << endl;
 
 		//expand the time axis of the variables ( create_fulltimes)
 
@@ -47,44 +47,50 @@ namespace INTERNAL_CHECKS
 		if (mytest.duplicate) //check on temperature ONLY
 		{
 			//  Test 2: duplicate_months check
+			std::cout << "duplicate_month check" << endl;
 			vector<string> variable_list = {"temperatures"};
-			//dmc(station,variable_list, process_var,0, DATESTART, DATEEND,logfile); // flag à la ligne 0 de station.qc_flags
+			dmc(station,variable_list, process_var,0, DATESTART, DATEEND,logfile); // flag à la ligne 0 de station.qc_flags
 		}
 		if (mytest.odd)
 		{
 			//  Test 3: odd cluster check
+			std::cout << "odd cluster check" << endl;
 			vector<string> variable_list = { "temperatures","dewpoints","windspeeds","slp"};
 			vector<int> flag_col = { 54, 55, 56, 57 };
-			//occ(station, variable_list, flag_col, logfile, second);
+			occ(station, variable_list, flag_col, logfile, second);
 			UTILS::apply_windspeed_flags_to_winddir(station);
 		}
 		if (mytest.frequent)
 		{
 			//  Test 4: frequent value check
-			//fvc(station, { "temperatures","dewpoints","slp" }, { 1, 2, 3 }, DATESTART, DATEEND, logfile);
+			std::cout << "frequent value check" << endl;
+			fvc(station, { "temperatures","dewpoints","slp" }, { 1, 2, 3 }, DATESTART, DATEEND, logfile);
 		}
 		if (mytest.diurnal)
 		{
 			//  Test 5: diurnal cycle check
+			std::cout << "diurnal cycle check" << endl;
 			if (std::abs(station.getLat()) <= 60.)
 				second=false;//dcc(station, { "temperatures" }, process_var, { 4 }, logfile);
 			else
-				logfile << "   Diurnal Cycle Check not run as CStation latitude  " << station.getLat()<< "  >  60 ";
+				logfile << "   Diurnal Cycle Check not run as "<<station.getName() <<" latitude  " << station.getLat()<< "  >  60 ";
 		}
 		if (mytest.gap)
 		{
 			//  Test 6: distributional gap check
-				//dgc(station, { "temperatures","dewpoints","slp"}, {5,6,7 },DATESTART,DATEEND, logfile);
+			dgc(station, { "temperatures","dewpoints","slp"}, {5,6,7 },DATESTART,DATEEND, logfile);
 		}
 		if (mytest.records)
 		{
 			//  Test 7: known records check
-			//krc(station, { "temperatures", "dewpoints", "windspeeds", "slp" }, { 8, 9, 10, 11 }, logfile);
+			std::cout << "known records  check" << endl;
+			krc(station, { "temperatures", "dewpoints", "windspeeds", "slp" }, { 8, 9, 10, 11 }, logfile);
 			UTILS::apply_windspeed_flags_to_winddir(station);
 		}
 		if (mytest.streaks)
 		{
 			//  Test 8: repeated streaks/unusual spell frequency
+			std::cout << "repeated streaks/unusual spell check" << endl;
 			rsc(station, { "temperatures", "dewpoints", "windspeeds", "slp", "winddirs" }, { { 12, 16, 20 }, { 13, 17, 21 }, { 14, 18, 22 }, { 15, 19, 23 }, { 66, 67, 68 } },
 			DATESTART, DATEEND,logfile);
 			UTILS::apply_windspeed_flags_to_winddir(station);
@@ -93,6 +99,7 @@ namespace INTERNAL_CHECKS
 		if (mytest.climatological)
 		{
 			//  Test 9: climatological outlier check
+			std::cout << "climatological outlier check" << endl;
 			//Il faut effectuer ce test sur trois ans de données au moins
 			//coc( station, { "temperatures", "dewpoints" }, { 24, 25 }, DATESTART, DATEEND,logfile);
 		}
@@ -100,14 +107,16 @@ namespace INTERNAL_CHECKS
 		if (mytest.spike)
 		{
 			//  Test 10: spike check
-			sc(station, {"temperatures", "dewpoints", "slp", "windspeeds"}, {27, 28, 29, 65}, DATESTART, DATEEND, logfile, second);
+			std::cout << "spike check" << endl;
+			sc(station, {"temperatures", "dewpoints", "slp" /*,"windspeeds"*/}, {27, 28, 29, 65}, DATESTART, DATEEND, logfile, second);
 			UTILS::apply_windspeed_flags_to_winddir(station);
 		}
 		if (mytest.humidity)
 		{
 			//  Test 11: temperature and dewpoint temperature cross - check
+			std::cout << "temperature and dewpoint temperature cross check" << endl;
 			
-			//hcc(station,{ 30, 31, 32}, DATESTART, DATEEND, logfile);
+			hcc(station,{ 30, 31, 32}, DATESTART, DATEEND, logfile);
 		}
 		if (mytest.cloud)
 		{
@@ -116,11 +125,13 @@ namespace INTERNAL_CHECKS
 		if (mytest.variance)
 		{
 			//  Test 13: unusual variance check
+			std::cout << "odd cluster check" << endl;
 			evc(station, { "temperatures", "dewpoints", "slp", "windspeeds" }, { 58, 59, 60, 61 }, DATESTART, DATEEND, logfile);
 			UTILS::apply_windspeed_flags_to_winddir(station); 
 		}
 		if (mytest.winds)
 		{
+			std::cout << "winds check" << endl;
 			//wdc(station, { 62, 63, 64 }, DATESTART, DATEEND, logfile);
 				 
 		}
